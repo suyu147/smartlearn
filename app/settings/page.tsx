@@ -72,9 +72,10 @@ export default function SettingsPage() {
                   <SelectContent>
                     {providerId === 'spark' && (
                       <>
-                        <SelectItem value="spark-4.0-turbo">星火 4.0 Turbo</SelectItem>
-                        <SelectItem value="spark-x2">星火 X2</SelectItem>
-                        <SelectItem value="spark-x1.5">星火 X1.5（推理）</SelectItem>
+                        <SelectItem value="lite">星火 Lite</SelectItem>
+                        <SelectItem value="generalv3">星火 Pro</SelectItem>
+                        <SelectItem value="pro-128k">星火 Pro-128K</SelectItem>
+                        <SelectItem value="4.0Ultra">星火 4.0 Ultra</SelectItem>
                       </>
                     )}
                     {providerId === 'openai' && (

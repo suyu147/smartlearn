@@ -13,9 +13,48 @@ interface ResolveModelOptions {
 }
 
 export function resolveModel(config?: ResolveModelOptions & Partial<ModelConfig>) {
-  const modelString = config?.modelString || config?.modelId || process.env.AI_MODEL || 'spark-4.0-turbo';
-  const providerId = config?.providerId || (process.env.AI_PROVIDER as 'spark' | 'openai') || 'spark';
-  const apiKey = config?.apiKey || process.env.SPARK_API_KEY || process.env.OPENAI_API_KEY || '';
+  const modelString = config?.modelString || config?.modelId || process.env.AI_MODEL || 'deepseek-chat';
+  const providerId = config?.providerId || (process.env.AI_PROVIDER as string) || 'deepseek';
+  
+  // 根据 providerId 获取对应的 API key
+  let apiKey = config?.apiKey;
+  if (!apiKey) {
+    switch (providerId) {
+      case 'spark':
+        apiKey = process.env.SPARK_API_KEY;
+        break;
+      case 'openai':
+        apiKey = process.env.OPENAI_API_KEY;
+        break;
+      case 'deepseek':
+        apiKey = process.env.DEEPSEEK_API_KEY;
+        break;
+      case 'kimi':
+        apiKey = process.env.KIMI_API_KEY;
+        break;
+      case 'glm':
+        apiKey = process.env.GLM_API_KEY;
+        break;
+      case 'qwen':
+        apiKey = process.env.QWEN_API_KEY;
+        break;
+      case 'minimax':
+        apiKey = process.env.MINIMAX_API_KEY;
+        break;
+      case 'siliconflow':
+        apiKey = process.env.SILICONFLOW_API_KEY;
+        break;
+      case 'doubao':
+        apiKey = process.env.DOUBAO_API_KEY;
+        break;
+      case 'grok':
+        apiKey = process.env.GROK_API_KEY;
+        break;
+      default:
+        apiKey = process.env.OPENAI_API_KEY;
+    }
+    apiKey = apiKey || '';
+  }
 
   const modelConfig = providerId === 'spark'
     ? {

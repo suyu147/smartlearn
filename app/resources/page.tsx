@@ -7,9 +7,10 @@ import { AgentStatusPanel } from '@/components/agent/agent-status-panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Search } from 'lucide-react';
+import { Sparkles, Search, User } from 'lucide-react';
 import { useResourcesStore } from '@/lib/store/resources';
-import type { ResourceType } from '@/lib/types/resource';
+import { useLearningProfileStore } from '@/lib/store/learning-profile';
+import type { ResourceType, Resource } from '@/lib/types/resource';
 import { RESOURCE_TYPE_LABELS } from '@/lib/types/resource';
 
 const resourceTypes: ResourceType[] = ['document', 'mindmap', 'quiz', 'video', 'code', 'reading'];
@@ -18,7 +19,8 @@ export default function ResourcesPage() {
   const [knowledgePoint, setKnowledgePoint] = useState('');
   const [selectedTypes, setSelectedTypes] = useState<ResourceType[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
-  const { generatingTypes, setGeneratingTypes } = useResourcesStore();
+  const { generatingTypes, setGeneratingTypes, addResource } = useResourcesStore();
+  const { profile } = useLearningProfileStore();
 
   const toggleType = (type: ResourceType) => {
     setSelectedTypes((prev) =>
@@ -39,6 +41,7 @@ export default function ResourcesPage() {
         body: JSON.stringify({
           knowledgePoints: [knowledgePoint],
           resourceTypes: types,
+          profile: profile?.dimensions || null,
         }),
       });
 
@@ -52,17 +55,24 @@ export default function ResourcesPage() {
           const { done, value } = await reader.read();
           if (done) break;
           const chunk = decoder.decode(value, { stream: true });
+          console.log('Received SSE chunk:', chunk);
+          
           // Process SSE events
           const lines = chunk.split('\n');
           for (const line of lines) {
             if (line.startsWith('data: ')) {
               try {
                 const data = JSON.parse(line.slice(6));
-                if (data.type === 'generation_complete') {
-                  // Resources will be added via store
+                console.log('Parsed SSE data:', data);
+                
+                if (data.type === 'resource_delta' && data.resource) {
+                  console.log('Adding resource to store:', data.resource);
+                  addResource(data.resource as Resource);
+                } else if (data.type === 'generation_complete') {
+                  console.log('Generation complete');
                 }
-              } catch {
-                // skip
+              } catch (e) {
+                console.error('Error parsing SSE data:', e);
               }
             }
           }
@@ -88,6 +98,21 @@ export default function ResourcesPage() {
         </div>
 
         <div className="mb-6 rounded-lg border p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <User className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">
+              {profile?.dimensions ? (
+                <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                  ✓ 学习画像已加载 - 资源将根据您的学习特征个性化生成
+                </span>
+              ) : (
+                <span className="text-amber-600 dark:text-amber-400">
+                  ⚠ 尚未构建学习画像 - 建议先去构建画像获得更好的个性化资源
+                </span>
+              )}
+            </span>
+          </div>
+          
           <div className="flex gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

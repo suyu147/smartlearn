@@ -16,9 +16,33 @@ export async function POST(request: NextRequest) {
       profile: ProfileDimensions | null;
     };
 
-    const apiKey = process.env.SPARK_API_KEY || process.env.OPENAI_API_KEY || '';
-    const providerId = (process.env.AI_PROVIDER as 'spark' | 'openai' | 'deepseek') || 'spark';
-    const modelId = process.env.AI_MODEL || 'spark-4.0-turbo';
+    const providerId = (process.env.AI_PROVIDER as 'spark' | 'openai' | 'deepseek') || 'deepseek';
+    const modelId = process.env.AI_MODEL || 'deepseek-chat';
+    
+    // 根据 providerId 获取对应的 API key
+    let apiKey = '';
+    switch (providerId) {
+      case 'spark':
+        apiKey = process.env.SPARK_API_KEY || '';
+        break;
+      case 'openai':
+        apiKey = process.env.OPENAI_API_KEY || '';
+        break;
+      case 'deepseek':
+        apiKey = process.env.DEEPSEEK_API_KEY || '';
+        break;
+      case 'kimi':
+        apiKey = process.env.KIMI_API_KEY || '';
+        break;
+      case 'glm':
+        apiKey = process.env.GLM_API_KEY || '';
+        break;
+      case 'qwen':
+        apiKey = process.env.QWEN_API_KEY || '';
+        break;
+      default:
+        apiKey = process.env.OPENAI_API_KEY || '';
+    }
 
     const modelConfig = providerId === 'spark'
       ? {

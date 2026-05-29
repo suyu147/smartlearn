@@ -99,7 +99,9 @@ export function ProfileChat() {
                     ),
                   );
                 } else if (data.type === 'profile_update') {
+                  console.log('Received profile update:', data.dimensions);
                   updateDimensions(data.dimensions);
+                  console.log('Profile updated in store');
                 }
               } catch {
                 // skip non-JSON lines

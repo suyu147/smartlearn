@@ -887,34 +887,32 @@ export const PROVIDERS: Record<ProviderId, ProviderConfig> = {
     icon: '/logos/spark.svg',
     models: [
       {
-        id: 'spark-x2',
-        name: '星火 X2',
-        contextWindow: 128000,
+        id: 'lite',
+        name: '星火 Lite',
+        contextWindow: 8000,
+        outputWindow: 4096,
+        capabilities: { streaming: true, tools: true, vision: false },
+      },
+      {
+        id: 'generalv3',
+        name: '星火 Pro',
+        contextWindow: 8000,
         outputWindow: 8192,
         capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: 'spark-4.0-turbo',
-        name: '星火 4.0 Turbo',
+        id: 'pro-128k',
+        name: '星火 Pro-128K',
         contextWindow: 128000,
-        outputWindow: 8192,
-        capabilities: { streaming: true, tools: true, vision: true },
+        outputWindow: 4096,
+        capabilities: { streaming: true, tools: true, vision: false },
       },
       {
-        id: 'spark-x1.5',
-        name: '星火 X1.5（推理）',
-        contextWindow: 64000,
-        outputWindow: 8192,
-        capabilities: {
-          streaming: true,
-          tools: true,
-          vision: false,
-          thinking: {
-            toggleable: true,
-            budgetAdjustable: false,
-            defaultEnabled: true,
-          },
-        },
+        id: '4.0Ultra',
+        name: '星火 4.0 Ultra',
+        contextWindow: 32000,
+        outputWindow: 32000,
+        capabilities: { streaming: true, tools: true, vision: true },
       },
     ],
   },
@@ -1070,22 +1068,37 @@ export function getModel(config: ModelConfig): ModelWithInfo {
       // callLLM / streamLLM at call time.
       if (config.providerId !== 'openai') {
         const providerId = config.providerId;
+        openaiOptions.compatibility = 'compatible';
         openaiOptions.fetch = async (url: RequestInfo | URL, init?: RequestInit) => {
-          // Read thinking config from globalThis (set by thinking-context.ts)
-          const thinkingCtx = (globalThis as Record<string, unknown>).__thinkingContext as
-            | { getStore?: () => unknown }
-            | undefined;
-          const thinking = thinkingCtx?.getStore?.() as ThinkingConfig | undefined;
-          if (thinking && init?.body && typeof init.body === 'string') {
-            const extra = getCompatThinkingBodyParams(providerId, thinking);
-            if (extra) {
-              try {
-                const body = JSON.parse(init.body);
-                Object.assign(body, extra);
-                init = { ...init, body: JSON.stringify(body) };
-              } catch {
-                /* leave body as-is */
+          if (init?.body && typeof init.body === 'string') {
+            try {
+              const body = JSON.parse(init.body);
+
+              // Replace 'developer' role with 'system' for OpenAI-compatible providers
+              // that don't support the 'developer' role (e.g. DeepSeek, Kimi, GLM, Qwen)
+              if (Array.isArray(body.messages)) {
+                for (const msg of body.messages) {
+                  if (msg.role === 'developer') {
+                    msg.role = 'system';
+                  }
+                }
               }
+
+              // Read thinking config from globalThis (set by thinking-context.ts)
+              const thinkingCtx = (globalThis as Record<string, unknown>).__thinkingContext as
+                | { getStore?: () => unknown }
+                | undefined;
+              const thinking = thinkingCtx?.getStore?.() as ThinkingConfig | undefined;
+              if (thinking) {
+                const extra = getCompatThinkingBodyParams(providerId, thinking);
+                if (extra) {
+                  Object.assign(body, extra);
+                }
+              }
+
+              init = { ...init, body: JSON.stringify(body) };
+            } catch {
+              /* leave body as-is */
             }
           }
           return globalThis.fetch(url, init);

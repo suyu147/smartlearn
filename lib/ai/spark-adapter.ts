@@ -19,29 +19,31 @@ export function createSparkModel(modelId: string, config: SparkConfig) {
 
 export const SPARK_MODELS = [
   {
-    id: 'spark-x2',
-    name: '星火 X2',
-    contextWindow: 128000,
+    id: 'lite',
+    name: '星火 Lite',
+    contextWindow: 8000,
+    outputWindow: 4096,
+    capabilities: { streaming: true, tools: true, vision: false },
+  },
+  {
+    id: 'generalv3',
+    name: '星火 Pro',
+    contextWindow: 8000,
     outputWindow: 8192,
     capabilities: { streaming: true, tools: true, vision: false },
   },
   {
-    id: 'spark-4.0-turbo',
-    name: '星火 4.0 Turbo',
+    id: 'pro-128k',
+    name: '星火 Pro-128K',
     contextWindow: 128000,
-    outputWindow: 8192,
-    capabilities: { streaming: true, tools: true, vision: true },
+    outputWindow: 4096,
+    capabilities: { streaming: true, tools: true, vision: false },
   },
   {
-    id: 'spark-x1.5',
-    name: '星火 X1.5（推理）',
-    contextWindow: 64000,
-    outputWindow: 8192,
-    capabilities: {
-      streaming: true,
-      tools: true,
-      vision: false,
-      thinking: { toggleable: true, budgetAdjustable: false, defaultEnabled: true },
-    },
+    id: '4.0Ultra',
+    name: '星火 4.0 Ultra',
+    contextWindow: 32000,
+    outputWindow: 32000,
+    capabilities: { streaming: true, tools: true, vision: true },
   },
 ];
