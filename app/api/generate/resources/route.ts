@@ -14,6 +14,7 @@ const RESOURCE_TYPE_LABELS: Record<ResourceType, string> = {
   video: 'video',
   code: 'code',
   reading: 'reading',
+  ppt: 'ppt',
 };
 
 async function generateResource(

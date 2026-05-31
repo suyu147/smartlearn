@@ -9,6 +9,7 @@ import {
   Settings,
   Sparkles,
   GraduationCap,
+  Presentation,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -50,6 +51,14 @@ export default function HomePage() {
       href: '/tutor',
       color: 'text-teal-500',
       badge: t('home.badge.bonus'),
+    },
+    {
+      icon: Presentation,
+      title: '动态课件',
+      description: 'AI自动生成带讲解和高光动画的交互式PPT课件',
+      href: '/ppt',
+      color: 'text-purple-500',
+      badge: '新功能',
     },
   ];
 

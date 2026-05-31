@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -41,7 +41,16 @@ export function VideoPlayer({ content, title, videoData }: { content: string; ti
     setExpandedScenes(new Set());
   };
 
-  let accumulatedTime = 0;
+  const sceneTimeRanges = useMemo(() => {
+    return parsed.scenes.reduce<Array<{ start: number; end: number }>>(
+      (ranges, scene, i) => {
+        const prevEnd = i > 0 ? ranges[i - 1].end : 0;
+        ranges.push({ start: prevEnd, end: prevEnd + scene.duration });
+        return ranges;
+      },
+      [],
+    );
+  }, [parsed.scenes]);
 
   return (
     <Card>
@@ -132,9 +141,8 @@ export function VideoPlayer({ content, title, videoData }: { content: string; ti
               <div className="space-y-3">
                 {parsed.scenes.map((scene, index) => {
                   const isExpanded = expandedScenes.has(index);
-                  const startTime = accumulatedTime;
-                  accumulatedTime += scene.duration;
-                  const endTime = accumulatedTime;
+                  const startTime = sceneTimeRanges[index].start;
+                  const endTime = sceneTimeRanges[index].end;
                   return (
                     <div key={index} className="relative pl-10">
                       <div className="absolute left-2.5 top-3 h-3 w-3 rounded-full border-2 border-primary bg-background" />

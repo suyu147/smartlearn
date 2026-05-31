@@ -1,83 +1,73 @@
 'use client';
 
-import { motion } from 'motion/react';
-import type { PercentageGeometry } from '@/lib/types/action';
+import { motion, AnimatePresence } from 'motion/react';
+import { useCanvasStore } from '@/lib/store/canvas';
+import { useStageStore } from '@/lib/store/stage';
+import { useMemo } from 'react';
+import type { PPTElement } from '@/lib/types/slides';
 
 interface LaserOverlayProps {
-  geometry: PercentageGeometry;
-  color?: string;
-  duration?: number;
+  elementId: string;
 }
 
-/**
- * Laser pointer overlay component
- *
- * Features:
- * - Smoothly flies in from the nearest corner to the element center
- * - Elegant light dot with soft breathing glow
- * - Uses percentage positioning (0-100)
- */
-export function LaserOverlay({
-  geometry,
-  color = '#ff3b30',
-  duration: _duration = 3000,
-}: LaserOverlayProps) {
-  const { centerX, centerY } = geometry;
+export function LaserOverlay({ elementId }: LaserOverlayProps) {
+  const scenes = useStageStore((s) => s.scenes);
+  const currentSceneId = useStageStore((s) => s.currentSceneId);
+  const laserOptions = useCanvasStore((s) => s.laserOptions);
 
-  const startPos = {
-    x: centerX > 50 ? 105 : -5,
-    y: centerY > 50 ? 105 : -5,
-  };
+  const elementCenter = useMemo(() => {
+    const scene = currentSceneId ? scenes.find((s) => s.id === currentSceneId) : null;
+    if (!scene || scene.type !== 'slide') return null;
+
+    const content = scene.content as { type: string; canvas?: import('@/lib/types/slides').Slide };
+    const slide = content?.canvas;
+    if (!slide) return null;
+
+    const element = slide.elements.find((el: PPTElement) => el.id === elementId);
+    if (!element) return null;
+
+    return {
+      x: element.left + element.width / 2,
+      y: element.top + element.height / 2,
+    };
+  }, [scenes, currentSceneId, elementId]);
+
+  if (!elementCenter) return null;
+
+  const color = laserOptions?.color || '#ff0000';
 
   return (
-    <motion.div
-      key={`laser-${centerX}-${centerY}`}
-      initial={{
-        opacity: 0,
-        left: `${startPos.x}%`,
-        top: `${startPos.y}%`,
-      }}
-      animate={{
-        opacity: 1,
-        left: `${centerX}%`,
-        top: `${centerY}%`,
-      }}
-      exit={{
-        opacity: 0,
-        left: `${startPos.x}%`,
-        top: `${startPos.y}%`,
-        transition: { duration: 0.25, ease: [0.4, 0, 1, 1] },
-      }}
-      transition={{
-        left: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
-        top: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
-        opacity: { duration: 0.15 },
-      }}
-      className="absolute z-[101] pointer-events-none"
-    >
-      <div className="relative -translate-x-1/2 -translate-y-1/2">
-        {/* Ring pulse */}
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0, scale: 0 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0 }}
+        transition={{ duration: 0.3, ease: 'easeOut' }}
+        className="absolute pointer-events-none"
+        style={{
+          left: elementCenter.x,
+          top: elementCenter.y,
+          zIndex: 60,
+          transform: 'translate(-50%, -50%)',
+        }}
+      >
         <motion.div
-          animate={{ scale: [1, 2.8], opacity: [0.6, 0] }}
-          transition={{
-            repeat: Infinity,
-            duration: 1.5,
-            ease: 'easeOut',
-            repeatDelay: 0.3,
+          animate={{
+            scale: [1, 1.5, 1],
+            opacity: [1, 0.6, 1],
           }}
-          className="absolute inset-0 rounded-full"
-          style={{ border: `1.5px solid ${color}` }}
-        />
-
-        {/* Light core */}
-        <div
-          className="w-2.5 h-2.5 rounded-full"
+          transition={{
+            duration: 1.5,
+            repeat: Infinity,
+            ease: 'easeInOut',
+          }}
+          className="w-4 h-4 rounded-full"
           style={{
             backgroundColor: color,
-            boxShadow: `0 0 8px 2px ${color}60`,
+            boxShadow: `0 0 12px ${color}, 0 0 24px ${color}40`,
           }}
         />
-      </div>
-    </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 }

@@ -4,26 +4,29 @@ import { cn } from '@/lib/utils';
 import { BookOpen, PieChart, MousePointer2, Cpu } from 'lucide-react';
 import type { Scene } from '@/lib/types/stage';
 
-interface SceneSidebarProps {
+interface PPTSidebarProps {
   scenes: Scene[];
   currentSceneId: string | null;
   onSelectScene: (id: string) => void;
 }
 
-const sceneTypeIcons: Record<string, typeof BookOpen> = {
-  slide: BookOpen,
-  quiz: PieChart,
-  interactive: MousePointer2,
-  pbl: Cpu,
-};
+export function PPTSidebar({ scenes, currentSceneId, onSelectScene }: PPTSidebarProps) {
+  const getSceneTypeIcon = (type: string) => {
+    const icons: Record<string, typeof BookOpen> = {
+      slide: BookOpen,
+      quiz: PieChart,
+      interactive: MousePointer2,
+      pbl: Cpu,
+    };
+    return icons[type] || BookOpen;
+  };
 
-export function SceneSidebar({ scenes, currentSceneId, onSelectScene }: SceneSidebarProps) {
   return (
     <div className="w-52 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-r border-gray-100 dark:border-gray-800 flex flex-col shrink-0 overflow-hidden">
       <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
         {scenes.map((scene, index) => {
           const isActive = currentSceneId === scene.id;
-          const Icon = sceneTypeIcons[scene.type] || BookOpen;
+          const Icon = getSceneTypeIcon(scene.type);
 
           return (
             <div

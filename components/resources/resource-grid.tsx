@@ -13,6 +13,7 @@ import {
   BookOpen,
   Eye,
   Trash2,
+  Presentation,
 } from 'lucide-react';
 import { useResourcesStore } from '@/lib/store/resources';
 import { RESOURCE_TYPE_LABELS, RESOURCE_TYPE_ICONS, type ResourceType } from '@/lib/types/resource';
@@ -29,6 +30,7 @@ const iconMap: Record<string, React.ElementType> = {
   Play,
   Code,
   BookOpen,
+  Presentation,
 };
 
 export function ResourceGrid() {
@@ -116,6 +118,24 @@ export function ResourceGrid() {
             )}
             {selected.type === 'reading' && (
               <DocumentViewer content={selected.content} title={selected.title} />
+            )}
+            {selected.type === 'ppt' && (
+              <div className="space-y-4">
+                <div className="p-4 rounded-lg border bg-muted/30">
+                  <h3 className="text-lg font-semibold mb-2">{selected.title}</h3>
+                  <p className="text-sm text-muted-foreground mb-4">动态课件已生成，点击下方按钮查看完整演示</p>
+                  <Button
+                    className="bg-purple-600 hover:bg-purple-700 text-white"
+                    onClick={() => window.open('/ppt', '_blank')}
+                  >
+                    <Presentation className="mr-2 h-4 w-4" />
+                    打开动态课件
+                  </Button>
+                </div>
+                <div className="prose dark:prose-invert max-w-none">
+                  <pre className="text-sm whitespace-pre-wrap bg-muted/50 p-4 rounded-lg">{selected.content}</pre>
+                </div>
+              </div>
             )}
           </div>
         ) : (

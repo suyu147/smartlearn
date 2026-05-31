@@ -88,6 +88,107 @@ export interface PPTBaseElement {
 
 export type PPTElement = PPTBaseElement & Record<string, unknown>;
 
+export type ChartType = 'bar' | 'line' | 'pie' | 'scatter' | 'radar' | 'area';
+
+export interface ChartOptions {
+  type: ChartType;
+  title?: string;
+  legend?: boolean;
+  [key: string]: unknown;
+}
+
+export interface PPTChartElement extends PPTBaseElement {
+  type: 'chart';
+  chartType: ChartType;
+  chartData: ChartData;
+  chartOptions?: ChartOptions;
+  data?: ChartData;
+  themeColors?: string[];
+  textColor?: string;
+  lineColor?: string;
+  options?: ChartOptions;
+}
+
+export interface PPTImageElement extends PPTBaseElement {
+  type: 'image';
+  src: string;
+  alt?: string;
+  filters?: Record<string, unknown>;
+  clipShape?: string;
+}
+
+export interface PPTShapeElement extends PPTBaseElement {
+  type: 'shape';
+  path?: string;
+  pathFormula?: string;
+  viewBox?: number[];
+  fill?: PPTElementFill;
+  text?: {
+    content: string;
+    [key: string]: unknown;
+  };
+}
+
+export interface PPTVideoElement extends PPTBaseElement {
+  type: 'video';
+  src: string;
+  poster?: string;
+  autoPlay?: boolean;
+  loop?: boolean;
+  muted?: boolean;
+}
+
+export interface PPTLatexElement extends PPTBaseElement {
+  type: 'latex';
+  latex: string;
+  color?: string;
+}
+
+export interface PPTTableElement extends PPTBaseElement {
+  type: 'table';
+  data: {
+    rows: number;
+    cols: number;
+    cells: PPTTableCell[][];
+    [key: string]: unknown;
+  };
+  style?: Record<string, unknown>;
+}
+
+export interface PPTTableCell {
+  id?: string;
+  text: string;
+  style?: Record<string, unknown>;
+  colspan?: number;
+  rowspan?: number;
+}
+
+export interface PPTLineElement {
+  id: string;
+  type: 'line';
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  rotate?: number;
+  lock?: boolean;
+  shadow?: PPTElementShadow;
+  fill?: PPTElementFill;
+  opacity?: number;
+  link?: string;
+  points: LinePoint[];
+  lineStyle?: LineStyleType;
+  color?: string;
+  lineWidth?: number;
+  [key: string]: unknown;
+}
+
+export interface PPTTextElement extends PPTBaseElement {
+  type: 'text';
+  content: string;
+  style?: Record<string, unknown>;
+}
+
 export interface SlideBackground {
   type: 'solid' | 'gradient' | 'image';
   color?: string;

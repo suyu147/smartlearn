@@ -1,15 +1,5 @@
 import { create } from 'zustand';
-
-interface CanvasElement {
-  id: string;
-  type: string;
-  x: number;
-  y: number;
-  width?: number;
-  height?: number;
-  content?: string;
-  [key: string]: unknown;
-}
+import { createSelectors } from '@/lib/utils/create-selectors';
 
 interface SpotlightEffect {
   elementId: string;
@@ -19,10 +9,16 @@ interface SpotlightEffect {
 interface LaserEffect {
   elementId: string;
   color: string;
+  duration?: number;
+}
+
+interface ZoomTarget {
+  elementId: string;
+  scale: number;
 }
 
 interface CanvasState {
-  elements: CanvasElement[];
+  canvasScale: number;
   selectedElementId: string | null;
   zoom: number;
   panX: number;
@@ -30,25 +26,26 @@ interface CanvasState {
   whiteboardOpen: boolean;
   whiteboardClearing: boolean;
   spotlightEffect: SpotlightEffect | null;
-  laserEffect: LaserEffect | null;
+  laserElementId: string | null;
+  laserOptions: { color: string; duration?: number } | null;
+  zoomTarget: ZoomTarget | null;
   playingVideoElementId: string | null;
-  addElement: (element: CanvasElement) => void;
-  updateElement: (id: string, updates: Partial<CanvasElement>) => void;
-  removeElement: (id: string) => void;
+  setCanvasScale: (scale: number) => void;
   setSelectedElementId: (id: string | null) => void;
   setZoom: (zoom: number) => void;
   setPan: (x: number, y: number) => void;
   setWhiteboardOpen: (open: boolean) => void;
   setWhiteboardClearing: (clearing: boolean) => void;
   setSpotlight: (elementId: string, options: { dimness: number }) => void;
-  setLaser: (elementId: string, options: { color: string }) => void;
+  setLaser: (elementId: string, options: { color: string; duration?: number }) => void;
+  setZoomTarget: (target: ZoomTarget | null) => void;
   clearAllEffects: () => void;
   playVideo: (elementId: string) => void;
   clearCanvas: () => void;
 }
 
-export const useCanvasStore = create<CanvasState>()((set) => ({
-  elements: [],
+const useCanvasStoreBase = create<CanvasState>()((set) => ({
+  canvasScale: 1,
   selectedElementId: null,
   zoom: 1,
   panX: 0,
@@ -56,20 +53,11 @@ export const useCanvasStore = create<CanvasState>()((set) => ({
   whiteboardOpen: false,
   whiteboardClearing: false,
   spotlightEffect: null,
-  laserEffect: null,
+  laserElementId: null,
+  laserOptions: null,
+  zoomTarget: null,
   playingVideoElementId: null,
-  addElement: (element) =>
-    set((state) => ({ elements: [...state.elements, element] })),
-  updateElement: (id, updates) =>
-    set((state) => ({
-      elements: state.elements.map((el) =>
-        el.id === id ? { ...el, ...updates } : el,
-      ),
-    })),
-  removeElement: (id) =>
-    set((state) => ({
-      elements: state.elements.filter((el) => el.id !== id),
-    })),
+  setCanvasScale: (canvasScale) => set({ canvasScale }),
   setSelectedElementId: (selectedElementId) => set({ selectedElementId }),
   setZoom: (zoom) => set({ zoom }),
   setPan: (panX, panY) => set({ panX, panY }),
@@ -78,9 +66,23 @@ export const useCanvasStore = create<CanvasState>()((set) => ({
   setSpotlight: (elementId, options) =>
     set({ spotlightEffect: { elementId, dimness: options.dimness } }),
   setLaser: (elementId, options) =>
-    set({ laserEffect: { elementId, color: options.color } }),
-  clearAllEffects: () => set({ spotlightEffect: null, laserEffect: null }),
+    set({ laserElementId: elementId, laserOptions: options }),
+  setZoomTarget: (zoomTarget) => set({ zoomTarget }),
+  clearAllEffects: () =>
+    set({ spotlightEffect: null, laserElementId: null, laserOptions: null, zoomTarget: null }),
   playVideo: (elementId) => set({ playingVideoElementId: elementId }),
   clearCanvas: () =>
-    set({ elements: [], selectedElementId: null, zoom: 1, panX: 0, panY: 0 }),
+    set({
+      canvasScale: 1,
+      selectedElementId: null,
+      zoom: 1,
+      panX: 0,
+      panY: 0,
+      spotlightEffect: null,
+      laserElementId: null,
+      laserOptions: null,
+      zoomTarget: null,
+    }),
 }));
+
+export const useCanvasStore = createSelectors(useCanvasStoreBase);

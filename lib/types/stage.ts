@@ -9,6 +9,7 @@ export interface Stage {
   updatedAt: number;
   userId?: string;
   thumbnail?: string;
+  whiteboard?: Array<{ elements: unknown[] }>;
 }
 
 export interface Scene {
@@ -28,6 +29,10 @@ export type SceneContent =
   | QuizSceneContent
   | InteractiveSceneContent
   | PBLSceneContent;
+
+export type { InteractiveSceneContent as InteractiveContent };
+export type { PBLSceneContent as PBLContent };
+export type { QuizSceneContent as QuizContent };
 
 export interface SlideSceneContent {
   type: 'slide';

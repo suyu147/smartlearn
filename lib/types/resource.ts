@@ -1,4 +1,4 @@
-export type ResourceType = 'document' | 'mindmap' | 'quiz' | 'video' | 'code' | 'reading';
+export type ResourceType = 'document' | 'mindmap' | 'quiz' | 'video' | 'code' | 'reading' | 'ppt';
 
 export type ResourceStatus = 'generating' | 'ready' | 'failed';
 
@@ -15,6 +15,7 @@ export interface Resource {
     language?: string;
     profileUsed?: boolean;
     videoData?: import('@/lib/video/generate').VideoGenerationResult;
+    pptData?: import('@/lib/types/stage').Scene[];
   };
   sourceAgent: string;
   status: ResourceStatus;
@@ -47,6 +48,7 @@ export const RESOURCE_TYPE_LABELS: Record<ResourceType, string> = {
   video: '教学视频',
   code: '代码案例',
   reading: '拓展阅读',
+  ppt: '动态课件',
 };
 
 export const RESOURCE_TYPE_ICONS: Record<ResourceType, string> = {
@@ -56,4 +58,5 @@ export const RESOURCE_TYPE_ICONS: Record<ResourceType, string> = {
   video: 'Play',
   code: 'Code',
   reading: 'BookOpen',
+  ppt: 'Presentation',
 };

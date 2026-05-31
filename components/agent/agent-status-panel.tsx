@@ -13,6 +13,7 @@ const agentForResource: Record<ResourceType, string> = {
   video: 'multimodal',
   code: 'code',
   reading: 'document',
+  ppt: 'multimodal',
 };
 
 export function AgentStatusPanel() {
