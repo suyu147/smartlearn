@@ -1068,7 +1068,7 @@ export function getModel(config: ModelConfig): ModelWithInfo {
       // callLLM / streamLLM at call time.
       if (config.providerId !== 'openai') {
         const providerId = config.providerId;
-        openaiOptions.compatibility = 'compatible';
+        (openaiOptions as Record<string, unknown>).compatibility = 'compatible';
         openaiOptions.fetch = async (url: RequestInfo | URL, init?: RequestInit) => {
           if (init?.body && typeof init.body === 'string') {
             try {

@@ -10,12 +10,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Route, Target, Loader2 } from 'lucide-react';
 import { useLearningPathStore } from '@/lib/store/learning-path';
 import { useLearningProfileStore } from '@/lib/store/learning-profile';
+import { useSettingsStore } from '@/lib/store/settings';
+import { useResourcesStore } from '@/lib/store/resources';
 
 export default function LearningPathPage() {
   const [goal, setGoal] = useState('');
   const [isPlanning, setIsPlanning] = useState(false);
   const { path, setPath } = useLearningPathStore();
   const { profile } = useLearningProfileStore();
+  const { providerId, modelId, apiKey, baseUrl } = useSettingsStore();
+  const { resources } = useResourcesStore();
 
   const handlePlan = async () => {
     if (!goal.trim()) return;
@@ -28,6 +32,13 @@ export default function LearningPathPage() {
         body: JSON.stringify({
           goal,
           profile: profile?.dimensions || null,
+          resources: resources.map((r) => ({
+            id: r.id,
+            type: r.type,
+            title: r.title,
+            knowledgePoints: r.metadata?.knowledgePoints,
+          })),
+          aiConfig: { providerId, modelId, apiKey, baseUrl },
         }),
       });
 

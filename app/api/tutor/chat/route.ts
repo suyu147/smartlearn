@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { streamLLM } from '@/lib/ai/llm';
-import { getModel } from '@/lib/ai/providers';
+import { resolveModel } from '@/lib/server/resolve-model';
+import type { ProviderId } from '@/lib/types/provider';
 import tutorChatPrompt from '@/lib/prompts/tutor-chat-prompt.json';
 
 const TUTOR_SYSTEM_PROMPT = tutorChatPrompt.systemPrompt;
@@ -8,50 +9,18 @@ const TUTOR_SYSTEM_PROMPT = tutorChatPrompt.systemPrompt;
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { message, conversationHistory } = body as {
+    const { message, conversationHistory, aiConfig } = body as {
       message: string;
       conversationHistory: { role: string; content: string }[];
+      aiConfig?: { providerId?: string; modelId?: string; apiKey?: string; baseUrl?: string };
     };
 
-    const providerId = (process.env.AI_PROVIDER as 'spark' | 'openai' | 'deepseek') || 'deepseek';
-    const modelId = process.env.AI_MODEL || 'deepseek-chat';
-    
-    // 根据 providerId 获取对应的 API key
-    let apiKey = '';
-    switch (providerId) {
-      case 'spark':
-        apiKey = process.env.SPARK_API_KEY || '';
-        break;
-      case 'openai':
-        apiKey = process.env.OPENAI_API_KEY || '';
-        break;
-      case 'deepseek':
-        apiKey = process.env.DEEPSEEK_API_KEY || '';
-        break;
-      case 'kimi':
-        apiKey = process.env.KIMI_API_KEY || '';
-        break;
-      case 'glm':
-        apiKey = process.env.GLM_API_KEY || '';
-        break;
-      case 'qwen':
-        apiKey = process.env.QWEN_API_KEY || '';
-        break;
-      default:
-        apiKey = process.env.OPENAI_API_KEY || '';
-    }
-
-    const modelConfig = providerId === 'spark'
-      ? {
-          providerId: 'spark' as const,
-          modelId,
-          apiKey,
-          providerType: 'openai' as const,
-          baseUrl: process.env.SPARK_BASE_URL || 'https://spark-api-open.xf-yun.com/v1',
-        }
-      : { providerId, modelId, apiKey };
-
-    const { model } = getModel(modelConfig);
+    const { model } = resolveModel({
+      providerId: aiConfig?.providerId as ProviderId | undefined,
+      modelString: aiConfig?.modelId,
+      apiKey: aiConfig?.apiKey,
+      baseUrl: aiConfig?.baseUrl,
+    });
 
     const chatMessages = [
       ...conversationHistory.slice(-10).map((m) => ({

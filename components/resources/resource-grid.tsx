@@ -12,6 +12,7 @@ import {
   Code,
   BookOpen,
   Eye,
+  Trash2,
 } from 'lucide-react';
 import { useResourcesStore } from '@/lib/store/resources';
 import { RESOURCE_TYPE_LABELS, RESOURCE_TYPE_ICONS, type ResourceType } from '@/lib/types/resource';
@@ -19,6 +20,7 @@ import { DocumentViewer } from './document-viewer';
 import { MindmapViewer } from './mindmap-viewer';
 import { QuizPlayer } from './quiz-player';
 import { CodeRunner } from './code-runner';
+import { VideoPlayer } from './video-player';
 
 const iconMap: Record<string, React.ElementType> = {
   FileText,
@@ -30,8 +32,9 @@ const iconMap: Record<string, React.ElementType> = {
 };
 
 export function ResourceGrid() {
-  const { resources } = useResourcesStore();
+  const { resources, removeResource } = useResourcesStore();
   const [selectedResource, setSelectedResource] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const selected = resources.find((r) => r.id === selectedResource);
 
@@ -54,14 +57,48 @@ export function ResourceGrid() {
       <div className="lg:col-span-2">
         {selected ? (
           <div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectedResource(null)}
-              className="mb-3"
-            >
-              ← 返回资源列表
-            </Button>
+            <div className="mb-3 flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSelectedResource(null)}
+              >
+                ← 返回资源列表
+              </Button>
+              {deletingId === selected.id ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-destructive">确认删除？</span>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      removeResource(selected.id);
+                      setSelectedResource(null);
+                      setDeletingId(null);
+                    }}
+                  >
+                    确认
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setDeletingId(null)}
+                  >
+                    取消
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:text-destructive"
+                  onClick={() => setDeletingId(selected.id)}
+                >
+                  <Trash2 className="mr-1 h-4 w-4" />
+                  删除
+                </Button>
+              )}
+            </div>
             {selected.type === 'document' && (
               <DocumentViewer content={selected.content} title={selected.title} />
             )}
@@ -74,17 +111,11 @@ export function ResourceGrid() {
             {selected.type === 'code' && (
               <CodeRunner content={selected.content} title={selected.title} />
             )}
-            {(selected.type === 'video' || selected.type === 'reading') && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>{selected.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
-                    {selected.content}
-                  </div>
-                </CardContent>
-              </Card>
+            {selected.type === 'video' && (
+              <VideoPlayer content={selected.content} title={selected.title} videoData={selected.metadata?.videoData} />
+            )}
+            {selected.type === 'reading' && (
+              <DocumentViewer content={selected.content} title={selected.title} />
             )}
           </div>
         ) : (
@@ -105,18 +136,56 @@ export function ResourceGrid() {
                           {RESOURCE_TYPE_LABELS[resource.type]}
                         </Badge>
                       </div>
-                      {resource.status === 'generating' && (
-                        <Badge variant="outline" className="text-xs animate-pulse">
-                          生成中
-                        </Badge>
-                      )}
+                      <div className="flex items-center gap-1">
+                        {resource.status === 'generating' && (
+                          <Badge variant="outline" className="text-xs animate-pulse">
+                            生成中
+                          </Badge>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeletingId(resource.id);
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
                     <CardTitle className="text-sm">{resource.title}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="line-clamp-2 text-xs text-muted-foreground">
-                      {resource.content.slice(0, 100)}...
-                    </p>
+                    {deletingId === resource.id ? (
+                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        <span className="text-xs text-destructive">确认删除？</span>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="h-6 text-xs"
+                          onClick={() => {
+                            removeResource(resource.id);
+                            setDeletingId(null);
+                          }}
+                        >
+                          确认
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-6 text-xs"
+                          onClick={() => setDeletingId(null)}
+                        >
+                          取消
+                        </Button>
+                      </div>
+                    ) : (
+                      <p className="line-clamp-2 text-xs text-muted-foreground">
+                        {resource.content.slice(0, 100)}...
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
               );

@@ -10,8 +10,11 @@ import {
   Lock,
   PlayCircle,
   ChevronRight,
+  FileText,
+  HelpCircle,
 } from 'lucide-react';
 import type { PathNodeStatus } from '@/lib/types/learning-path';
+import { RESOURCE_TYPE_LABELS, type ResourceType } from '@/lib/types/resource';
 
 const statusConfig: Record<PathNodeStatus, { icon: React.ElementType; color: string; label: string }> = {
   locked: { icon: Lock, color: 'text-muted-foreground', label: '未解锁' },
@@ -69,12 +72,38 @@ export function PathTimeline() {
                       </Badge>
                     </div>
                     <div className="mt-1 flex flex-wrap gap-1">
-                      {node.knowledgePoints.map((kp) => (
-                        <Badge key={kp} variant="secondary" className="text-xs">
+                      {node.knowledgePoints.map((kp, i) => (
+                        <Badge key={kp || `kp-${i}`} variant="secondary" className="text-xs">
                           {kp}
                         </Badge>
                       ))}
                     </div>
+                    {node.resources.length > 0 && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {node.resources.map((res, i) => (
+                          <a
+                            key={res.resourceId || `res-${i}`}
+                            href={`/resources?id=${res.resourceId}`}
+                            className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                          >
+                            <FileText className="h-3 w-3" />
+                            {RESOURCE_TYPE_LABELS[res.type as ResourceType] || res.type}
+                            <span className="max-w-[120px] truncate">{res.title}</span>
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                    {node.quizId && (
+                      <div className="mt-1">
+                        <a
+                          href={`/resources?id=${node.quizId}`}
+                          className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs text-amber-700 transition-colors hover:bg-amber-100"
+                        >
+                          <HelpCircle className="h-3 w-3" />
+                          练习测验
+                        </a>
+                      </div>
+                    )}
                     <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
                       <span>预计 {node.estimatedMinutes} 分钟</span>
                       <span>{node.resources.length} 个资源</span>

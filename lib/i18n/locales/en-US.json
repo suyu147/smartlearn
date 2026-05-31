@@ -7,7 +7,61 @@
   },
   "home": {
     "slogan": "Generative Learning in Multi-Agent Interactive Classroom",
-    "greetingWithName": "Hi, {{name}}"
+    "greetingWithName": "Hi, {{name}}",
+    "contestBadge": "A3 Track",
+    "nav": {
+      "profile": "Profile",
+      "resource": "Resources",
+      "path": "Path",
+      "tutor": "Tutor"
+    },
+    "hero": {
+      "line1": "LLM-Powered",
+      "highlight": "Personalized Learning",
+      "line2": "Multi-Agent System",
+      "subtitle": "Collaborative multi-agents build your learning profile, generate personalized resources, plan dynamic learning paths, and achieve truly adaptive education"
+    },
+    "cta": {
+      "buildProfile": "Build Profile",
+      "generateResource": "Generate Resources"
+    },
+    "badge": {
+      "core": "Core",
+      "bonus": "Bonus"
+    },
+    "features": {
+      "profile": {
+        "title": "Conversational Profile Building",
+        "description": "Extract learning traits through multi-turn dialogue, build an 8-dimension learning profile"
+      },
+      "resource": {
+        "title": "Multi-Agent Resource Generation",
+        "description": "7 specialized agents collaboratively generate 6 types of personalized learning resources"
+      },
+      "path": {
+        "title": "Personalized Learning Path",
+        "description": "Dynamically plan learning paths, precisely recommend resources, always up-to-date"
+      },
+      "tutor": {
+        "title": "Smart Tutoring",
+        "description": "Multi-modal Q&A with text, diagrams, and video for comprehensive tutoring"
+      }
+    },
+    "architecture": {
+      "title": "Multi-Agent Architecture",
+      "description": "7 specialized agents + 1 orchestrator, collaborating via LangGraph state machine"
+    },
+    "agents": {
+      "profile": { "name": "Profile Agent", "desc": "Build profile via dialogue" },
+      "document": { "name": "Document Agent", "desc": "Generate docs" },
+      "quiz": { "name": "Quiz Agent", "desc": "Generate quizzes" },
+      "multimodal": { "name": "Multimodal Agent", "desc": "Mindmap/Video" },
+      "code": { "name": "Code Agent", "desc": "Code examples" },
+      "path": { "name": "Path Agent", "desc": "Plan learning path" },
+      "tutor": { "name": "Tutor Agent", "desc": "Smart tutoring" },
+      "evaluation": { "name": "Eval Agent", "desc": "Learning evaluation" }
+    },
+    "footer": "SmartLearn — 15th China Software Cup Collegiate Software Design Contest A3 Track"
   },
   "toolbar": {
     "languageHint": "Course will be generated in this language",
@@ -873,5 +927,47 @@
     "voice": "Voice",
     "speed": "Speed",
     "language": "Language"
+  },
+  "settingsPage": {
+    "title": "Settings",
+    "description": "Configure AI models and system parameters",
+    "aiModel": {
+      "title": "AI Model Configuration",
+      "description": "Configure LLM provider and API key",
+      "provider": "Provider",
+      "model": "Model",
+      "apiKeyPlaceholder": "Enter API Key",
+      "apiSecretPlaceholder": "Enter API Secret (required for iFlytek Spark)",
+      "baseUrlLabel": "Custom Base URL (optional)",
+      "baseUrlPlaceholder": "Leave empty for default"
+    },
+    "providers": {
+      "spark": "iFlytek Spark (Recommended)",
+      "qwen": "Qwen"
+    },
+    "models": {
+      "sparkLite": "Spark Lite",
+      "sparkPro": "Spark Pro",
+      "sparkPro128k": "Spark Pro-128K",
+      "spark4Ultra": "Spark 4.0 Ultra"
+    },
+    "appearance": {
+      "title": "Appearance",
+      "theme": "Theme",
+      "themeSystem": "System",
+      "themeLight": "Light",
+      "themeDark": "Dark",
+      "language": "Language",
+      "langZhCN": "Simplified Chinese"
+    }
+  },
+  "profilePage": {
+    "title": "Learning Profile",
+    "subtitle": "Build your personalized learning profile through conversation. The system will recommend the most suitable learning resources based on your profile",
+    "updateProfile": "Update Profile",
+    "startBuild": "Build Profile",
+    "notBuilt": "Profile Not Built Yet",
+    "notBuiltHint": "Click \"Build Profile\" to let AI understand your learning needs through conversation",
+    "startChat": "Start Chat"
   }
 }

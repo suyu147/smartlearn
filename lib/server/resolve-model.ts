@@ -1,5 +1,5 @@
 import { getModel } from '@/lib/ai/providers';
-import type { ModelConfig } from '@/lib/types/provider';
+import type { ModelConfig, ProviderId } from '@/lib/types/provider';
 import type { NextRequest } from 'next/server';
 
 interface ResolveModelOptions {
@@ -65,7 +65,7 @@ export function resolveModel(config?: ResolveModelOptions & Partial<ModelConfig>
         baseUrl: config?.baseUrl || process.env.SPARK_BASE_URL || 'https://spark-api-open.xf-yun.com/v1',
       }
     : {
-        providerId,
+        providerId: providerId as ProviderId,
         modelId: modelString,
         apiKey,
         ...(config?.baseUrl ? { baseUrl: config.baseUrl } : {}),

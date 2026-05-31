@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useLearningProfileStore } from '@/lib/store/learning-profile';
+import { useSettingsStore } from '@/lib/store/settings';
 import type { ConversationMessage } from '@/lib/types/profile';
 
 export function ProfileChat() {
@@ -15,6 +16,7 @@ export function ProfileChat() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { profile, addConversationMessage, updateDimensions, setChatOpen } =
     useLearningProfileStore();
+  const { providerId, modelId, apiKey, baseUrl } = useSettingsStore();
 
   useEffect(() => {
     if (messages.length === 0) {
@@ -58,6 +60,7 @@ export function ProfileChat() {
           message: userMessage.content,
           profile: profile,
           conversationHistory: messages,
+          aiConfig: { providerId, modelId, apiKey, baseUrl },
         }),
       });
 

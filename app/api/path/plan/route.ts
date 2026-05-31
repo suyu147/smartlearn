@@ -1,70 +1,63 @@
 import { NextRequest } from 'next/server';
 import { streamLLM } from '@/lib/ai/llm';
-import { getModel } from '@/lib/ai/providers';
+import { resolveModel } from '@/lib/server/resolve-model';
+import type { ProviderId } from '@/lib/types/provider';
 import { parseJsonResponse } from '@/lib/generation/json-repair';
 import type { ProfileDimensions } from '@/lib/types/profile';
 import type { LearningPath, LearningPathNode } from '@/lib/types/learning-path';
+import type { Resource, ResourceType } from '@/lib/types/resource';
 import pathPlanPrompt from '@/lib/prompts/path-plan-prompt.json';
 
 const PATH_SYSTEM_PROMPT = pathPlanPrompt.systemPrompt;
 
+interface AvailableResource {
+  id: string;
+  type: ResourceType;
+  title: string;
+  knowledgePoints?: string[];
+}
+
+function buildResourcePrompt(resources: AvailableResource[]): string {
+  if (!resources || resources.length === 0) return '';
+
+  const lines = resources.map((r) => {
+    const kpStr = r.knowledgePoints && r.knowledgePoints.length > 0
+      ? ` (知识点: ${r.knowledgePoints.join(', ')})`
+      : '';
+    return `- [${r.type}] ${r.title} (id: ${r.id})${kpStr}`;
+  });
+
+  return `\n\n可用学习资源：\n${lines.join('\n')}\n请在规划路径时，将相关资源关联到对应的知识节点中。对于quiz类型的资源，请将其id填入对应节点的quizId字段。`;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { goal, profile } = body as {
+    const { goal, profile, aiConfig, resources } = body as {
       goal: string;
       profile: ProfileDimensions | null;
+      aiConfig?: { providerId?: string; modelId?: string; apiKey?: string; baseUrl?: string };
+      resources?: AvailableResource[];
     };
 
-    const providerId = (process.env.AI_PROVIDER as 'spark' | 'openai' | 'deepseek') || 'deepseek';
-    const modelId = process.env.AI_MODEL || 'deepseek-chat';
-    
-    // 根据 providerId 获取对应的 API key
-    let apiKey = '';
-    switch (providerId) {
-      case 'spark':
-        apiKey = process.env.SPARK_API_KEY || '';
-        break;
-      case 'openai':
-        apiKey = process.env.OPENAI_API_KEY || '';
-        break;
-      case 'deepseek':
-        apiKey = process.env.DEEPSEEK_API_KEY || '';
-        break;
-      case 'kimi':
-        apiKey = process.env.KIMI_API_KEY || '';
-        break;
-      case 'glm':
-        apiKey = process.env.GLM_API_KEY || '';
-        break;
-      case 'qwen':
-        apiKey = process.env.QWEN_API_KEY || '';
-        break;
-      default:
-        apiKey = process.env.OPENAI_API_KEY || '';
-    }
-
-    const modelConfig = providerId === 'spark'
-      ? {
-          providerId: 'spark' as const,
-          modelId,
-          apiKey,
-          providerType: 'openai' as const,
-          baseUrl: process.env.SPARK_BASE_URL || 'https://spark-api-open.xf-yun.com/v1',
-        }
-      : { providerId, modelId, apiKey };
-
-    const { model } = getModel(modelConfig);
+    const { model } = resolveModel({
+      providerId: aiConfig?.providerId as ProviderId | undefined,
+      modelString: aiConfig?.modelId,
+      apiKey: aiConfig?.apiKey,
+      baseUrl: aiConfig?.baseUrl,
+    });
 
     const profileContext = profile
       ? `\n\n${JSON.stringify(profile, null, 2)}`
       : '\n\nNo profile available, plan for beginner level';
 
+    const resourcePrompt = buildResourcePrompt(resources || []);
+
     const result = streamLLM(
       {
         model,
         system: PATH_SYSTEM_PROMPT,
-        prompt: `${goal}${profileContext}`,
+        prompt: `${goal}${profileContext}${resourcePrompt}`,
         maxOutputTokens: 4096,
       },
       'path-plan',

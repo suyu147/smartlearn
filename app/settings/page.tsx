@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useSettingsStore } from '@/lib/store/settings';
 import { Settings, Key, Globe, Palette } from 'lucide-react';
+import { useI18n } from '@/lib/hooks/use-i18n';
 
 export default function SettingsPage() {
   const {
@@ -28,13 +29,15 @@ export default function SettingsPage() {
     setLanguage,
   } = useSettingsStore();
 
+  const { t } = useI18n();
+
   return (
     <div className="flex min-h-screen flex-col">
       <AppNav />
       <div className="container max-w-2xl flex-1 py-6">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold">设置</h1>
-          <p className="text-muted-foreground">配置AI模型和系统参数</p>
+          <h1 className="text-2xl font-bold">{t('settingsPage.title')}</h1>
+          <p className="text-muted-foreground">{t('settingsPage.description')}</p>
         </div>
 
         <div className="space-y-6">
@@ -42,29 +45,29 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <Key className="h-4 w-4" />
-                AI 模型配置
+                {t('settingsPage.aiModel.title')}
               </CardTitle>
-              <CardDescription>配置大语言模型提供商和密钥</CardDescription>
+              <CardDescription>{t('settingsPage.aiModel.description')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>提供商</Label>
+                <Label>{t('settingsPage.aiModel.provider')}</Label>
                 <Select value={providerId} onValueChange={setProviderId}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="spark">讯飞星火（推荐）</SelectItem>
+                    <SelectItem value="spark">{t('settingsPage.providers.spark')}</SelectItem>
                     <SelectItem value="openai">OpenAI</SelectItem>
                     <SelectItem value="deepseek">DeepSeek</SelectItem>
                     <SelectItem value="kimi">Kimi</SelectItem>
-                    <SelectItem value="qwen">通义千问</SelectItem>
+                    <SelectItem value="qwen">{t('settingsPage.providers.qwen')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label>模型</Label>
+                <Label>{t('settingsPage.aiModel.model')}</Label>
                 <Select value={modelId} onValueChange={setModelId}>
                   <SelectTrigger>
                     <SelectValue />
@@ -72,10 +75,10 @@ export default function SettingsPage() {
                   <SelectContent>
                     {providerId === 'spark' && (
                       <>
-                        <SelectItem value="lite">星火 Lite</SelectItem>
-                        <SelectItem value="generalv3">星火 Pro</SelectItem>
-                        <SelectItem value="pro-128k">星火 Pro-128K</SelectItem>
-                        <SelectItem value="4.0Ultra">星火 4.0 Ultra</SelectItem>
+                        <SelectItem value="lite">{t('settingsPage.models.sparkLite')}</SelectItem>
+                        <SelectItem value="generalv3">{t('settingsPage.models.sparkPro')}</SelectItem>
+                        <SelectItem value="pro-128k">{t('settingsPage.models.sparkPro128k')}</SelectItem>
+                        <SelectItem value="4.0Ultra">{t('settingsPage.models.spark4Ultra')}</SelectItem>
                       </>
                     )}
                     {providerId === 'openai' && (
@@ -110,7 +113,7 @@ export default function SettingsPage() {
                   type="password"
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="输入API Key"
+                  placeholder={t('settingsPage.aiModel.apiKeyPlaceholder')}
                 />
               </div>
 
@@ -121,17 +124,17 @@ export default function SettingsPage() {
                     type="password"
                     value={apiSecret}
                     onChange={(e) => setApiSecret(e.target.value)}
-                    placeholder="输入API Secret（讯飞星火需要）"
+                    placeholder={t('settingsPage.aiModel.apiSecretPlaceholder')}
                   />
                 </div>
               )}
 
               <div className="space-y-2">
-                <Label>自定义 Base URL（可选）</Label>
+                <Label>{t('settingsPage.aiModel.baseUrlLabel')}</Label>
                 <Input
                   value={baseUrl}
                   onChange={(e) => setBaseUrl(e.target.value)}
-                  placeholder="留空使用默认地址"
+                  placeholder={t('settingsPage.aiModel.baseUrlPlaceholder')}
                 />
               </div>
             </CardContent>
@@ -141,32 +144,32 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 <Palette className="h-4 w-4" />
-                外观
+                {t('settingsPage.appearance.title')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label>主题</Label>
+                <Label>{t('settingsPage.appearance.theme')}</Label>
                 <Select value={theme} onValueChange={(v) => setTheme(v as 'light' | 'dark' | 'system')}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="system">跟随系统</SelectItem>
-                    <SelectItem value="light">浅色</SelectItem>
-                    <SelectItem value="dark">深色</SelectItem>
+                    <SelectItem value="system">{t('settingsPage.appearance.themeSystem')}</SelectItem>
+                    <SelectItem value="light">{t('settingsPage.appearance.themeLight')}</SelectItem>
+                    <SelectItem value="dark">{t('settingsPage.appearance.themeDark')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label>语言</Label>
+                <Label>{t('settingsPage.appearance.language')}</Label>
                 <Select value={language} onValueChange={(v) => setLanguage(v as 'zh-CN' | 'en-US')}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="zh-CN">简体中文</SelectItem>
+                    <SelectItem value="zh-CN">{t('settingsPage.appearance.langZhCN')}</SelectItem>
                     <SelectItem value="en-US">English</SelectItem>
                   </SelectContent>
                 </Select>

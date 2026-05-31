@@ -1,6 +1,7 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import { NextRequest } from 'next/server';
+﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿import { NextRequest } from 'next/server';
 import { streamLLM } from '@/lib/ai/llm';
-import { getModel } from '@/lib/ai/providers';
+import { resolveModel } from '@/lib/server/resolve-model';
+import type { ProviderId } from '@/lib/types/provider';
 import { parseJsonResponse } from '@/lib/generation/json-repair';
 import type { ProfileDimensions, ConversationMessage } from '@/lib/types/profile';
 import { DEFAULT_DIMENSIONS } from '@/lib/types/profile';
@@ -11,55 +12,19 @@ const PROFILE_SYSTEM_PROMPT = profileChatPrompt.systemPrompt;
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { message, profile, conversationHistory } = body as {
+    const { message, profile, conversationHistory, aiConfig } = body as {
       message: string;
       profile: { dimensions: ProfileDimensions } | null;
       conversationHistory: ConversationMessage[];
+      aiConfig?: { providerId?: string; modelId?: string; apiKey?: string; baseUrl?: string };
     };
 
-    const providerId = (process.env.AI_PROVIDER as 'spark' | 'openai' | 'deepseek') || 'deepseek';
-    const modelId = process.env.AI_MODEL || 'deepseek-chat';
-    
-    // 根据 providerId 获取对应的 API key
-    let apiKey = '';
-    switch (providerId) {
-      case 'spark':
-        apiKey = process.env.SPARK_API_KEY || '';
-        break;
-      case 'openai':
-        apiKey = process.env.OPENAI_API_KEY || '';
-        break;
-      case 'deepseek':
-        apiKey = process.env.DEEPSEEK_API_KEY || '';
-        break;
-      case 'kimi':
-        apiKey = process.env.KIMI_API_KEY || '';
-        break;
-      case 'glm':
-        apiKey = process.env.GLM_API_KEY || '';
-        break;
-      case 'qwen':
-        apiKey = process.env.QWEN_API_KEY || '';
-        break;
-      default:
-        apiKey = process.env.OPENAI_API_KEY || '';
-    }
-
-    const modelConfig = providerId === 'spark'
-      ? {
-          providerId: 'spark' as const,
-          modelId,
-          apiKey,
-          providerType: 'openai' as const,
-          baseUrl: process.env.SPARK_BASE_URL || 'https://spark-api-open.xf-yun.com/v1',
-        }
-      : {
-          providerId,
-          modelId,
-          apiKey,
-        };
-
-    const { model } = getModel(modelConfig);
+    const { model } = resolveModel({
+      providerId: aiConfig?.providerId as ProviderId | undefined,
+      modelString: aiConfig?.modelId,
+      apiKey: aiConfig?.apiKey,
+      baseUrl: aiConfig?.baseUrl,
+    });
 
     const currentDimensions = profile?.dimensions || DEFAULT_DIMENSIONS;
 
@@ -91,7 +56,7 @@ export async function POST(request: NextRequest) {
             fullContent += chunk;
           }
 
-          let displayContent = fullContent;
+          const displayContent = fullContent;
           let inJsonBlock = false;
           let resultText = '';
           let i = 0;
@@ -130,28 +95,25 @@ export async function POST(request: NextRequest) {
           let profileUpdate: ProfileDimensions | null = null;
           
           // 首先尝试直接解析
-          let parsed = parseJsonResponse<any>(fullContent);
+          const parsed = parseJsonResponse<Record<string, unknown>>(fullContent);
           
           if (parsed) {
-            if (parsed.dimensions) {
-              // 格式1: { dimensions: { ... } }
-              profileUpdate = parsed.dimensions;
+            if (parsed.dimensions && typeof parsed.dimensions === 'object') {
+              profileUpdate = parsed.dimensions as ProfileDimensions;
             } else if (parsed.knowledgeBase) {
-              // 格式2: 直接是 dimensions 对象
-              profileUpdate = parsed;
+              profileUpdate = parsed as unknown as ProfileDimensions;
             }
           }
           
-          // 如果直接解析失败，尝试从文本中提取 JSON
           if (!profileUpdate) {
             const jsonMatch = fullContent.match(/\{[\s\S]*"knowledgeBase"[\s\S]*\}/);
             if (jsonMatch) {
               try {
-                parsed = JSON.parse(jsonMatch[0]);
-                if (parsed.dimensions) {
-                  profileUpdate = parsed.dimensions;
-                } else if (parsed.knowledgeBase) {
-                  profileUpdate = parsed;
+                const extracted = JSON.parse(jsonMatch[0]) as Record<string, unknown>;
+                if (extracted.dimensions && typeof extracted.dimensions === 'object') {
+                  profileUpdate = extracted.dimensions as ProfileDimensions;
+                } else if (extracted.knowledgeBase) {
+                  profileUpdate = extracted as unknown as ProfileDimensions;
                 }
               } catch (e) {
                 console.error('Failed to parse extracted JSON:', e);

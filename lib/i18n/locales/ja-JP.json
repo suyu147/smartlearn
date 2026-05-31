@@ -7,7 +7,61 @@
   },
   "home": {
     "slogan": "マルチエージェント対話型教室で生成的に学ぶ",
-    "greetingWithName": "こんにちは、{{name}}さん"
+    "greetingWithName": "こんにちは、{{name}}さん",
+    "contestBadge": "A3 トラック",
+    "nav": {
+      "profile": "プロフィール",
+      "resource": "リソース",
+      "path": "パス",
+      "tutor": "チューター"
+    },
+    "hero": {
+      "line1": "LLM搭載",
+      "highlight": "パーソナライズ学習",
+      "line2": "マルチエージェントシステム",
+      "subtitle": "マルチエージェント協調により、学習プロフィールを構築し、個別化された学習リソースを生成し、動的な学習パスを計画します"
+    },
+    "cta": {
+      "buildProfile": "プロフィール構築",
+      "generateResource": "リソース生成"
+    },
+    "badge": {
+      "core": "コア",
+      "bonus": "ボーナス"
+    },
+    "features": {
+      "profile": {
+        "title": "対話型プロフィール構築",
+        "description": "多回対話で学習特性を抽出し、8次元の学習プロフィールを構築"
+      },
+      "resource": {
+        "title": "マルチエージェントリソース生成",
+        "description": "7つの専門エージェントが協調して6種類の個別化された学習リソースを生成"
+      },
+      "path": {
+        "title": "パーソナライズ学習パス",
+        "description": "動的に学習パスを計画し、リソースを正確に推薦"
+      },
+      "tutor": {
+        "title": "スマートチュータリング",
+        "description": "テキスト＋図解＋動画でマルチモーダルな質問応答"
+      }
+    },
+    "architecture": {
+      "title": "マルチエージェントアーキテクチャ",
+      "description": "7つの専門エージェント＋1つのオーケストレーター、LangGraphステートマシンで協調"
+    },
+    "agents": {
+      "profile": { "name": "プロフィールAgent", "desc": "対話でプロフィール構築" },
+      "document": { "name": "ドキュメントAgent", "desc": "解説ドキュメント生成" },
+      "quiz": { "name": "クイズAgent", "desc": "練習問題生成" },
+      "multimodal": { "name": "マルチモーダルAgent", "desc": "マインドマップ/動画" },
+      "code": { "name": "コードAgent", "desc": "コード例" },
+      "path": { "name": "パスAgent", "desc": "学習パス計画" },
+      "tutor": { "name": "チューターAgent", "desc": "スマートチュータリング" },
+      "evaluation": { "name": "評価Agent", "desc": "学習効果評価" }
+    },
+    "footer": "SmartLearn — 第15回中国ソフトウェアカップ A3 トラック"
   },
   "toolbar": {
     "languageHint": "コースはこの言語で生成されます",
@@ -873,5 +927,47 @@
     "voice": "ボイス",
     "speed": "速度",
     "language": "言語"
+  },
+  "settingsPage": {
+    "title": "設定",
+    "description": "AIモデルとシステムパラメータを設定",
+    "aiModel": {
+      "title": "AIモデル設定",
+      "description": "LLMプロバイダーとAPIキーを設定",
+      "provider": "プロバイダー",
+      "model": "モデル",
+      "apiKeyPlaceholder": "APIキーを入力",
+      "apiSecretPlaceholder": "APIシークレットを入力（iFlytek Sparkで必要）",
+      "baseUrlLabel": "カスタムBase URL（オプション）",
+      "baseUrlPlaceholder": "デフォルトを使用する場合は空欄"
+    },
+    "providers": {
+      "spark": "iFlytek Spark（推奨）",
+      "qwen": "Qwen"
+    },
+    "models": {
+      "sparkLite": "Spark Lite",
+      "sparkPro": "Spark Pro",
+      "sparkPro128k": "Spark Pro-128K",
+      "spark4Ultra": "Spark 4.0 Ultra"
+    },
+    "appearance": {
+      "title": "外観",
+      "theme": "テーマ",
+      "themeSystem": "システムに従う",
+      "themeLight": "ライト",
+      "themeDark": "ダーク",
+      "language": "言語",
+      "langZhCN": "簡体字中国語"
+    }
+  },
+  "profilePage": {
+    "title": "学習プロフィール",
+    "subtitle": "対話を通じてパーソナライズされた学習プロフィールを構築します。プロフィールに基づいて最適な学習リソースをお勧めします",
+    "updateProfile": "プロフィール更新",
+    "startBuild": "プロフィール構築",
+    "notBuilt": "プロフィール未構築",
+    "notBuiltHint": "「プロフィール構築」をクリックして、対話でAIに学習ニーズを理解させましょう",
+    "startChat": "対話を開始"
   }
 }

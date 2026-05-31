@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { GraduationCap, Send, Bot, User, Loader2 } from 'lucide-react';
+import { GraduationCap, Send, Bot, User, Loader2, ImageIcon, ChevronDown, ChevronRight } from 'lucide-react';
+import { useSettingsStore } from '@/lib/store/settings';
 
 interface TutorMessage {
   id: string;
@@ -19,7 +20,9 @@ export default function TutorPage() {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<TutorMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [expandedDiagrams, setExpandedDiagrams] = useState<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { providerId, modelId, apiKey, baseUrl } = useSettingsStore();
 
   useEffect(() => {
     if (messages.length === 0) {
@@ -62,6 +65,7 @@ export default function TutorPage() {
         body: JSON.stringify({
           message: userMessage.content,
           conversationHistory: messages.slice(-10),
+          aiConfig: { providerId, modelId, apiKey, baseUrl },
         }),
       });
 
@@ -114,6 +118,83 @@ export default function TutorPage() {
     }
   };
 
+  const toggleDiagram = (key: string) => {
+    setExpandedDiagrams((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
+  const renderMessageContent = (message: TutorMessage) => {
+    if (message.role !== 'assistant') {
+      return <div className="whitespace-pre-wrap">{message.content}</div>;
+    }
+
+    const parts: React.ReactNode[] = [];
+    const regex = /\[DIAGRAM:(.*?)\]/g;
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+    let diagramIndex = 0;
+
+    while ((match = regex.exec(message.content)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(
+          <span key={`text-${diagramIndex}`} className="whitespace-pre-wrap">
+            {message.content.slice(lastIndex, match.index)}
+          </span>
+        );
+      }
+
+      const diagramKey = `${message.id}-diagram-${diagramIndex}`;
+      const description = match[1];
+      const isExpanded = expandedDiagrams.has(diagramKey);
+
+      parts.push(
+        <div key={diagramKey} className="my-2 rounded-md border border-teal-200 bg-teal-50 dark:border-teal-800 dark:bg-teal-950/30">
+          <button
+            type="button"
+            onClick={() => toggleDiagram(diagramKey)}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-teal-700 dark:text-teal-300"
+          >
+            <ImageIcon className="h-4 w-4 shrink-0" />
+            <span className="flex-1">图解：{description}</span>
+            {isExpanded ? (
+              <ChevronDown className="h-4 w-4 shrink-0" />
+            ) : (
+              <ChevronRight className="h-4 w-4 shrink-0" />
+            )}
+          </button>
+          {isExpanded && (
+            <div className="border-t border-teal-200 px-3 py-2 text-xs text-muted-foreground dark:border-teal-800">
+              <div className="flex items-center gap-2">
+                <ImageIcon className="h-3 w-3" />
+                <span>{description}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+
+      diagramIndex++;
+      lastIndex = match.index + match[0].length;
+    }
+
+    if (lastIndex < message.content.length) {
+      parts.push(
+        <span key={`text-last`} className="whitespace-pre-wrap">
+          {message.content.slice(lastIndex)}
+        </span>
+      );
+    }
+
+    return <div>{parts}</div>;
+  };
+
   return (
     <div className="flex min-h-screen flex-col">
       <AppNav />
@@ -163,7 +244,7 @@ export default function TutorPage() {
                           : 'bg-primary text-primary-foreground'
                       }`}
                     >
-                      <div className="whitespace-pre-wrap">{message.content}</div>
+                      {renderMessageContent(message)}
                     </div>
                   </div>
                 ))}

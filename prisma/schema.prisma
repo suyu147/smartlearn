@@ -130,3 +130,10 @@ model PathNodeResource {
 
   @@unique([pathId, nodeId, resourceId])
 }
+
+model StageOutline {
+  stageId   String @id
+  outlines  Json
+  createdAt Int    @default(0)
+  updatedAt Int    @default(0)
+}

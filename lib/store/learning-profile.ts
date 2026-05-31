@@ -80,7 +80,6 @@ export const useLearningProfileStore = create<LearningProfileState>()(
           const newProfile: LearningProfile = {
             id: state.profile?.id ?? crypto.randomUUID(),
             userId: 'current',
-            createdAt: state.profile?.createdAt ?? new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             version: (state.profile?.version ?? 0) + 1,
             dimensions: mergedDimensions,
@@ -106,7 +105,6 @@ export const useLearningProfileStore = create<LearningProfileState>()(
           } : {
             id: crypto.randomUUID(),
             userId: 'current',
-            createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             version: 1,
             dimensions: { ...DEFAULT_DIMENSIONS },

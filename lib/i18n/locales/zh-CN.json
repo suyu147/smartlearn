@@ -7,7 +7,61 @@
   },
   "home": {
     "slogan": "Generative Learning in Multi-Agent Interactive Classroom",
-    "greetingWithName": "嗨，{{name}}"
+    "greetingWithName": "嗨，{{name}}",
+    "contestBadge": "A3 赛题",
+    "nav": {
+      "profile": "画像",
+      "resource": "资源",
+      "path": "路径",
+      "tutor": "辅导"
+    },
+    "hero": {
+      "line1": "基于大模型的",
+      "highlight": "个性化学习",
+      "line2": "多智能体系统",
+      "subtitle": "通过多智能体协作，为您构建精准学习画像，生成个性化学习资源，规划动态学习路径，实现真正的因材施教"
+    },
+    "cta": {
+      "buildProfile": "开始构建画像",
+      "generateResource": "生成学习资源"
+    },
+    "badge": {
+      "core": "核心功能",
+      "bonus": "加分功能"
+    },
+    "features": {
+      "profile": {
+        "title": "对话式画像构建",
+        "description": "通过多轮对话智能抽取学习特征，构建8维度学习画像"
+      },
+      "resource": {
+        "title": "多智能体资源生成",
+        "description": "7个专业Agent协同生成6种个性化学习资源"
+      },
+      "path": {
+        "title": "个性化学习路径",
+        "description": "动态规划学习路径，精准推荐资源，随学随新"
+      },
+      "tutor": {
+        "title": "智能辅导",
+        "description": "多模态答疑解惑，文字+图解+视频全方位辅导"
+      }
+    },
+    "architecture": {
+      "title": "多智能体架构",
+      "description": "7个专业Agent + 1个编排器，基于LangGraph状态机协同工作"
+    },
+    "agents": {
+      "profile": { "name": "画像Agent", "desc": "对话构建画像" },
+      "document": { "name": "文档Agent", "desc": "生成讲解文档" },
+      "quiz": { "name": "题库Agent", "desc": "生成练习题" },
+      "multimodal": { "name": "多模态Agent", "desc": "思维导图/视频" },
+      "code": { "name": "代码Agent", "desc": "代码实操案例" },
+      "path": { "name": "路径Agent", "desc": "规划学习路径" },
+      "tutor": { "name": "辅导Agent", "desc": "智能辅导答疑" },
+      "evaluation": { "name": "评估Agent", "desc": "学习效果评估" }
+    },
+    "footer": "SmartLearn — 第十五届\u201c中国软件杯\u201d大学生软件设计大赛 A3 赛题"
   },
   "toolbar": {
     "languageHint": "课程将以此语言生成",
@@ -873,5 +927,47 @@
     "voice": "音色",
     "speed": "语速",
     "language": "语言"
+  },
+  "settingsPage": {
+    "title": "设置",
+    "description": "配置AI模型和系统参数",
+    "aiModel": {
+      "title": "AI 模型配置",
+      "description": "配置大语言模型提供商和密钥",
+      "provider": "提供商",
+      "model": "模型",
+      "apiKeyPlaceholder": "输入API Key",
+      "apiSecretPlaceholder": "输入API Secret（讯飞星火需要）",
+      "baseUrlLabel": "自定义 Base URL（可选）",
+      "baseUrlPlaceholder": "留空使用默认地址"
+    },
+    "providers": {
+      "spark": "讯飞星火（推荐）",
+      "qwen": "通义千问"
+    },
+    "models": {
+      "sparkLite": "星火 Lite",
+      "sparkPro": "星火 Pro",
+      "sparkPro128k": "星火 Pro-128K",
+      "spark4Ultra": "星火 4.0 Ultra"
+    },
+    "appearance": {
+      "title": "外观",
+      "theme": "主题",
+      "themeSystem": "跟随系统",
+      "themeLight": "浅色",
+      "themeDark": "深色",
+      "language": "语言",
+      "langZhCN": "简体中文"
+    }
+  },
+  "profilePage": {
+    "title": "学习画像",
+    "subtitle": "通过对话构建您的个性化学习画像，系统将根据画像为您推荐最合适的学习资源",
+    "updateProfile": "更新画像",
+    "startBuild": "开始构建画像",
+    "notBuilt": "尚未构建画像",
+    "notBuiltHint": "点击\u201c开始构建画像\u201d，通过对话让AI了解您的学习需求",
+    "startChat": "开始对话"
   }
 }

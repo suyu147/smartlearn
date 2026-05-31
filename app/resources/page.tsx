@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Sparkles, Search, User } from 'lucide-react';
 import { useResourcesStore } from '@/lib/store/resources';
 import { useLearningProfileStore } from '@/lib/store/learning-profile';
+import { useSettingsStore } from '@/lib/store/settings';
 import type { ResourceType, Resource } from '@/lib/types/resource';
 import { RESOURCE_TYPE_LABELS } from '@/lib/types/resource';
 
@@ -21,6 +22,7 @@ export default function ResourcesPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const { generatingTypes, setGeneratingTypes, addResource } = useResourcesStore();
   const { profile } = useLearningProfileStore();
+  const { providerId, modelId, apiKey, baseUrl } = useSettingsStore();
 
   const toggleType = (type: ResourceType) => {
     setSelectedTypes((prev) =>
@@ -42,6 +44,7 @@ export default function ResourcesPage() {
           knowledgePoints: [knowledgePoint],
           resourceTypes: types,
           profile: profile?.dimensions || null,
+          aiConfig: { providerId, modelId, apiKey, baseUrl },
         }),
       });
 

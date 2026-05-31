@@ -13,6 +13,8 @@ export interface Resource {
     knowledgePoints?: string[];
     duration?: number;
     language?: string;
+    profileUsed?: boolean;
+    videoData?: import('@/lib/video/generate').VideoGenerationResult;
   };
   sourceAgent: string;
   status: ResourceStatus;

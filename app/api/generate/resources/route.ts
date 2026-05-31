@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { streamLLM } from '@/lib/ai/llm';
-import { getModel } from '@/lib/ai/providers';
+import { resolveModel } from '@/lib/server/resolve-model';
+import type { ProviderId } from '@/lib/types/provider';
 import { parseJsonResponse } from '@/lib/generation/json-repair';
 import type { ResourceType, Resource } from '@/lib/types/resource';
 import type { ProfileDimensions } from '@/lib/types/profile';
@@ -15,52 +16,18 @@ const RESOURCE_TYPE_LABELS: Record<ResourceType, string> = {
   reading: 'reading',
 };
 
-function getModelConfig() {
-  const providerId = (process.env.AI_PROVIDER as 'spark' | 'openai' | 'deepseek') || 'deepseek';
-  const modelId = process.env.AI_MODEL || 'deepseek-chat';
-  
-  // 根据 providerId 获取对应的 API key
-  let apiKey = '';
-  switch (providerId) {
-    case 'spark':
-      apiKey = process.env.SPARK_API_KEY || '';
-      break;
-    case 'openai':
-      apiKey = process.env.OPENAI_API_KEY || '';
-      break;
-    case 'deepseek':
-      apiKey = process.env.DEEPSEEK_API_KEY || '';
-      break;
-    case 'kimi':
-      apiKey = process.env.KIMI_API_KEY || '';
-      break;
-    case 'glm':
-      apiKey = process.env.GLM_API_KEY || '';
-      break;
-    case 'qwen':
-      apiKey = process.env.QWEN_API_KEY || '';
-      break;
-    default:
-      apiKey = process.env.OPENAI_API_KEY || '';
-  }
-
-  return providerId === 'spark'
-    ? {
-        providerId: 'spark' as const,
-        modelId,
-        apiKey,
-        providerType: 'openai' as const,
-        baseUrl: process.env.SPARK_BASE_URL || 'https://spark-api-open.xf-yun.com/v1',
-      }
-    : { providerId, modelId, apiKey };
-}
-
 async function generateResource(
   type: ResourceType,
   knowledgePoints: string[],
   profile?: ProfileDimensions | null,
+  aiConfig?: { providerId?: string; modelId?: string; apiKey?: string; baseUrl?: string },
 ): Promise<{ content: string; title: string }> {
-  const { model } = getModel(getModelConfig());
+  const { model } = resolveModel({
+    providerId: aiConfig?.providerId as ProviderId | undefined,
+    modelString: aiConfig?.modelId,
+    apiKey: aiConfig?.apiKey,
+    baseUrl: aiConfig?.baseUrl,
+  });
   const prompt = resourcePrompts[type as keyof typeof resourcePrompts];
 
   // 构建个性化提示词
@@ -89,10 +56,11 @@ async function generateResource(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { knowledgePoints, resourceTypes, profile } = body as {
+    const { knowledgePoints, resourceTypes, profile, aiConfig } = body as {
       knowledgePoints: string[];
       resourceTypes: ResourceType[];
       profile?: ProfileDimensions | null;
+      aiConfig?: { providerId?: string; modelId?: string; apiKey?: string; baseUrl?: string };
     };
 
     console.log('Generating resources with profile:', profile ? 'yes' : 'no');
@@ -111,7 +79,7 @@ export async function POST(request: NextRequest) {
               ),
             );
 
-            const { content, title } = await generateResource(type, knowledgePoints, profile);
+            const { content, title } = await generateResource(type, knowledgePoints, profile, aiConfig);
 
             const resource: Resource = {
               id: crypto.randomUUID(),
@@ -127,6 +95,14 @@ export async function POST(request: NextRequest) {
                 profileUsed: !!profile,
               },
             };
+
+            if (type === 'video') {
+              const { parseVideoScript } = await import('@/lib/video/generate');
+              const videoData = parseVideoScript(content);
+              if (resource.metadata) {
+                resource.metadata.videoData = videoData;
+              }
+            }
 
             console.log('Generated resource:', resource.title);
 
