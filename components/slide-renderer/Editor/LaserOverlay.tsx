@@ -4,37 +4,47 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useCanvasStore } from '@/lib/store/canvas';
 import { useStageStore } from '@/lib/store/stage';
 import { useMemo } from 'react';
+import type { Scene } from '@/lib/types/stage';
 import type { PPTElement } from '@/lib/types/slides';
 
 interface LaserOverlayProps {
-  elementId: string;
+  elementId?: string;
+  scene?: Scene | null;
+  color?: string;
 }
 
-export function LaserOverlay({ elementId }: LaserOverlayProps) {
+function resolveElementCenter(scene: Scene | null | undefined, elementId: string | undefined) {
+  if (!scene || scene.type !== 'slide' || !elementId) return null;
+
+  const content = scene.content as { type: string; canvas?: import('@/lib/types/slides').Slide };
+  const slide = content?.canvas;
+  if (!slide) return null;
+
+  const element = slide.elements.find((el: PPTElement) => el.id === elementId);
+  if (!element) return null;
+
+  return {
+    x: element.left + element.width / 2,
+    y: element.top + element.height / 2,
+  };
+}
+
+export function LaserOverlay({ elementId, scene, color }: LaserOverlayProps) {
   const scenes = useStageStore((s) => s.scenes);
   const currentSceneId = useStageStore((s) => s.currentSceneId);
+  const laserElementId = useCanvasStore((s) => s.laserElementId);
   const laserOptions = useCanvasStore((s) => s.laserOptions);
 
-  const elementCenter = useMemo(() => {
-    const scene = currentSceneId ? scenes.find((s) => s.id === currentSceneId) : null;
-    if (!scene || scene.type !== 'slide') return null;
+  const activeScene = scene ?? (currentSceneId ? scenes.find((s) => s.id === currentSceneId) ?? null : null);
+  const activeElementId = elementId ?? laserElementId ?? undefined;
+  const activeColor = color ?? laserOptions?.color ?? '#ff0000';
 
-    const content = scene.content as { type: string; canvas?: import('@/lib/types/slides').Slide };
-    const slide = content?.canvas;
-    if (!slide) return null;
-
-    const element = slide.elements.find((el: PPTElement) => el.id === elementId);
-    if (!element) return null;
-
-    return {
-      x: element.left + element.width / 2,
-      y: element.top + element.height / 2,
-    };
-  }, [scenes, currentSceneId, elementId]);
+  const elementCenter = useMemo(
+    () => resolveElementCenter(activeScene, activeElementId),
+    [activeScene, activeElementId],
+  );
 
   if (!elementCenter) return null;
-
-  const color = laserOptions?.color || '#ff0000';
 
   return (
     <AnimatePresence>
@@ -52,19 +62,12 @@ export function LaserOverlay({ elementId }: LaserOverlayProps) {
         }}
       >
         <motion.div
-          animate={{
-            scale: [1, 1.5, 1],
-            opacity: [1, 0.6, 1],
-          }}
-          transition={{
-            duration: 1.5,
-            repeat: Infinity,
-            ease: 'easeInOut',
-          }}
-          className="w-4 h-4 rounded-full"
+          animate={{ scale: [1, 1.5, 1], opacity: [1, 0.6, 1] }}
+          transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+          className="h-4 w-4 rounded-full"
           style={{
-            backgroundColor: color,
-            boxShadow: `0 0 12px ${color}, 0 0 24px ${color}40`,
+            backgroundColor: activeColor,
+            boxShadow: `0 0 12px ${activeColor}, 0 0 24px ${activeColor}40`,
           }}
         />
       </motion.div>

@@ -294,8 +294,10 @@ You must output a JSON array where each element is a scene outline object:
 4. **interactive type must include interactiveConfig** - with conceptName, conceptOverview, designIdea, and subject
    5b. **pbl type must include pblConfig** - with projectTopic, projectDescription, targetSkills, issueCount, and language
 5. Arrange appropriate number of scenes based on inferred duration (typically 1-2 scenes per minute)
-6. Insert quizzes at appropriate points for knowledge checks
+6. Insert quizzes at appropriate points for knowledge checks — **every course MUST include at least 1 quiz scene** near the end to test understanding
 7. Use interactive scenes sparingly (max 1-2 per course) and only when the concept truly benefits from hands-on interaction
 8. **Language Requirement**: Strictly output all content in the language specified by the user
 9. Regardless of information completeness, always output conforming JSON - do not ask questions or request more information
 10. **No teacher identity on slides**: Scene titles and keyPoints must be neutral and topic-focused. Never include the teacher's name or role (e.g., avoid "Teacher Wang's Tips", "Teacher's Wishes"). Use generic labels like "Tips", "Summary", "Key Takeaways" instead.
+11. **No duplicate content**: Each slide MUST cover a DISTINCT subtopic with UNIQUE keyPoints. Do NOT create multiple slides that cover the same concept from the same angle. If a topic is complex, split it by sub-aspect (e.g., "Method A" vs "Method B"), NOT by repetition. Review your output: if two slides have >50% overlapping keyPoints, merge them or differentiate them.
+12. **Structural variety**: Avoid creating slides with identical layouts (e.g., three consecutive "title + bullet list" slides). Vary the structure: use comparison tables, diagrams, step-by-step flows, two-column layouts, etc.

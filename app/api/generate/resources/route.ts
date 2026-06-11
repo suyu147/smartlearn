@@ -71,13 +71,15 @@ export async function POST(request: NextRequest) {
     const stream = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder();
+        // 安全 enqueue：客户端断开连接时静默失败
+        const safeEnqueue = (data: string) => {
+          try { controller.enqueue(encoder.encode(data)); } catch { /* 客户端已断开 */ }
+        };
 
         for (const type of types) {
           try {
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({ type: 'agent_start', agent: type, task: `Generating ${RESOURCE_TYPE_LABELS[type]}` })}\n\n`,
-              ),
+            safeEnqueue(
+              `data: ${JSON.stringify({ type: 'agent_start', agent: type, task: `Generating ${RESOURCE_TYPE_LABELS[type]}` })}\n\n`,
             );
 
             const { content, title } = await generateResource(type, knowledgePoints, profile, aiConfig);
@@ -107,31 +109,25 @@ export async function POST(request: NextRequest) {
 
             console.log('Generated resource:', resource.title);
 
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({ type: 'resource_delta', resource })}\n\n`,
-              ),
+            safeEnqueue(
+              `data: ${JSON.stringify({ type: 'resource_delta', resource })}\n\n`,
             );
 
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({ type: 'agent_end', agent: type })}\n\n`,
-              ),
+            safeEnqueue(
+              `data: ${JSON.stringify({ type: 'agent_end', agent: type })}\n\n`,
             );
           } catch (error) {
             console.error('Error generating resource:', error);
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({ type: 'error', agent: type, message: String(error) })}\n\n`,
-              ),
+            safeEnqueue(
+              `data: ${JSON.stringify({ type: 'error', agent: type, message: String(error) })}\n\n`,
             );
           }
         }
 
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify({ type: 'generation_complete' })}\n\n`),
+        safeEnqueue(
+          `data: ${JSON.stringify({ type: 'generation_complete' })}\n\n`,
         );
-        controller.close();
+        try { controller.close(); } catch { /* 已关闭 */ }
       },
     });
 

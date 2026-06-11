@@ -266,15 +266,14 @@ function resolveImageIds(
           return { ...el, src: imageMapping[src] };
         }
 
-        // Generated image reference — keep as placeholder for async backfill
+        // Generated image reference — resolve or remove
         if (isGeneratedImageId(src)) {
           if (generatedMediaMapping && generatedMediaMapping[src]) {
             log.debug(`Resolved generated image ID "${src}" to URL`);
             return { ...el, src: generatedMediaMapping[src] };
           }
-          // Keep element with placeholder ID — frontend renders skeleton
-          log.debug(`Keeping generated image placeholder: ${src}`);
-          return el;
+          log.warn(`No mapping for generated image ID: ${src}, removing element`);
+          return null;
         }
       }
 
@@ -289,15 +288,40 @@ function resolveImageIds(
             log.debug(`Resolved generated video ID "${src}" to URL`);
             return { ...el, src: generatedMediaMapping[src] };
           }
-          // Keep element with placeholder ID — frontend renders skeleton
-          log.debug(`Keeping generated video placeholder: ${src}`);
-          return el;
+          log.warn(`No mapping for generated video ID: ${src}, removing element`);
+          return null;
         }
       }
 
       return el;
     })
     .filter((el): el is NonNullable<typeof el> => el !== null);
+}
+
+const CANVAS_W = 1000;
+const CANVAS_H = 562.5;
+const MARGIN = 50;
+
+function clampElementsToCanvas(elements: GeneratedSlideData['elements']): GeneratedSlideData['elements'] {
+  return elements.map((el) => {
+    const left = el.left ?? 0;
+    const top = el.top ?? 0;
+    const width = el.width ?? 0;
+    const height = el.height ?? 0;
+
+    const maxRight = CANVAS_W - MARGIN;
+    const maxBottom = CANVAS_H - MARGIN / 2;
+
+    const clampedLeft = Math.max(MARGIN, left);
+    let clampedWidth = Math.min(width, maxRight - clampedLeft);
+    const clampedTop = Math.max(25, top);
+    let clampedHeight = Math.min(height, maxBottom - clampedTop);
+
+    if (clampedWidth < 50) clampedWidth = Math.min(50, maxRight - clampedLeft);
+    if (clampedHeight < 30) clampedHeight = Math.min(30, maxBottom - clampedTop);
+
+    return { ...el, left: clampedLeft, top: clampedTop, width: clampedWidth, height: clampedHeight };
+  });
 }
 
 /**
@@ -587,8 +611,11 @@ async function generateSlideContent(
   const fixedElements = fixElementDefaults(generatedData.elements, assignedImages);
   log.debug(`After element fixing: ${fixedElements.length} elements`);
 
+  // Clamp elements to canvas boundaries
+  const clampedElements = clampElementsToCanvas(fixedElements);
+
   // Process LaTeX elements: render latex string → HTML via KaTeX
-  const latexProcessedElements = processLatexElements(fixedElements);
+  const latexProcessedElements = processLatexElements(clampedElements);
   log.debug(`After LaTeX processing: ${latexProcessedElements.length} elements`);
 
   // Resolve image_id references to actual URLs

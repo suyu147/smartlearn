@@ -6,6 +6,13 @@ export function getServerWebSearchProviders() {
 
 export function getServerImageProviders() {
   const providers: Record<string, string> = {};
+  if (process.env.IMAGE_GEN_API_KEY) {
+    const provider = process.env.IMAGE_GEN_PROVIDER || 'siliconflow';
+    providers[provider] = process.env.IMAGE_GEN_API_KEY;
+  }
+  if (process.env.DOUBAO_IMAGE_API_KEY) {
+    providers.doubao = process.env.DOUBAO_IMAGE_API_KEY;
+  }
   return providers;
 }
 
@@ -16,6 +23,27 @@ export function getServerVideoProviders() {
 
 export function resolveWebSearchApiKey(clientApiKey?: string): string | null {
   return clientApiKey || process.env.TAVILY_API_KEY || null;
+}
+
+export function resolveImageGenApiKey(provider?: string, clientApiKey?: string): string | null {
+  if (clientApiKey) return clientApiKey;
+  const p = provider || process.env.IMAGE_GEN_PROVIDER || 'siliconflow';
+  if (p === 'doubao') {
+    return process.env.DOUBAO_IMAGE_API_KEY || process.env.IMAGE_GEN_API_KEY || null;
+  }
+  return process.env.IMAGE_GEN_API_KEY || null;
+}
+
+export function resolveImageGenProvider(): string {
+  return process.env.IMAGE_GEN_PROVIDER || 'siliconflow';
+}
+
+export function resolveImageGenBaseUrl(provider?: string): string | undefined {
+  const p = provider || process.env.IMAGE_GEN_PROVIDER || 'siliconflow';
+  if (p === 'doubao') {
+    return process.env.DOUBAO_IMAGE_BASE_URL || 'https://ark.cn-beijing.volces.com';
+  }
+  return process.env.IMAGE_GEN_BASE_URL || undefined;
 }
 
 export function resolveASRApiKey(providerId: string, clientApiKey?: string): string {

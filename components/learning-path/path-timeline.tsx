@@ -23,10 +23,17 @@ const statusConfig: Record<PathNodeStatus, { icon: React.ElementType; color: str
   completed: { icon: CheckCircle2, color: 'text-green-500', label: '已完成' },
 };
 
-export function PathTimeline() {
+export function PathTimeline({ onClickResource }: { onClickResource?: (resourceId: string) => void }) {
   const { path, updateNodeStatus } = useLearningPathStore();
 
   if (!path) return null;
+
+  // 通过resourceId查找Resource引用
+  function handleResourceClick(e: React.MouseEvent, resourceId: string) {
+    e.preventDefault();
+    e.stopPropagation();
+    onClickResource?.(resourceId);
+  }
 
   return (
     <div className="space-y-1">
@@ -81,27 +88,27 @@ export function PathTimeline() {
                     {node.resources.length > 0 && (
                       <div className="mt-2 flex flex-wrap gap-1">
                         {node.resources.map((res, i) => (
-                          <a
+                          <button
                             key={res.resourceId || `res-${i}`}
-                            href={`/resources?id=${res.resourceId}`}
-                            className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                            onClick={(e) => handleResourceClick(e, res.resourceId)}
+                            className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground cursor-pointer"
                           >
                             <FileText className="h-3 w-3" />
                             {RESOURCE_TYPE_LABELS[res.type as ResourceType] || res.type}
                             <span className="max-w-[120px] truncate">{res.title}</span>
-                          </a>
+                          </button>
                         ))}
                       </div>
                     )}
                     {node.quizId && (
                       <div className="mt-1">
-                        <a
-                          href={`/resources?id=${node.quizId}`}
-                          className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs text-amber-700 transition-colors hover:bg-amber-100"
+                        <button
+                          onClick={(e) => handleResourceClick(e, node.quizId!)}
+                          className="inline-flex items-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs text-amber-700 transition-colors hover:bg-amber-100 cursor-pointer"
                         >
                           <HelpCircle className="h-3 w-3" />
                           练习测验
-                        </a>
+                        </button>
                       </div>
                     )}
                     <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">

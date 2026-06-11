@@ -1,11 +1,13 @@
 import { NextRequest } from 'next/server';
 import { streamLLM } from '@/lib/ai/llm';
 import { resolveModel } from '@/lib/server/resolve-model';
+import { resolveImageGenApiKey, resolveImageGenProvider } from '@/lib/server/provider-config';
 import type { ProviderId } from '@/lib/types/provider';
-import type { UserRequirements, SceneOutline } from '@/lib/types/generation';
+import type { UserRequirements, SceneOutline, ImageMapping } from '@/lib/types/generation';
 import type { Scene } from '@/lib/types/stage';
 import { generateSceneOutlinesFromRequirements } from '@/lib/generation/outline-generator';
 import { buildSceneFromOutline } from '@/lib/generation/scene-builder';
+import { batchGenerateImages } from '@/lib/generation/image-generator';
 import { createLogger } from '@/lib/logger';
 const log = createLogger('PPTGenerateAPI');
 
@@ -44,10 +46,20 @@ function createAICallFn(
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { requirement, language, aiConfig } = body as {
+    const {
+      requirement,
+      language,
+      aiConfig,
+      enableImageGeneration,
+      imageGenApiKey,
+      includeInteractive,
+    } = body as {
       requirement: string;
       language?: string;
       aiConfig?: { providerId?: string; modelId?: string; apiKey?: string; baseUrl?: string };
+      enableImageGeneration?: boolean;
+      imageGenApiKey?: string;
+      includeInteractive?: boolean;
     };
 
     if (!requirement) {
@@ -63,6 +75,9 @@ export async function POST(request: NextRequest) {
       aiConfig?.apiKey,
       aiConfig?.baseUrl,
     );
+
+    const imageGenProvider = resolveImageGenProvider();
+    const imageGenAvailable = enableImageGeneration && !!resolveImageGenApiKey(imageGenProvider, imageGenApiKey);
 
     const requirements: UserRequirements = {
       requirement,
@@ -90,6 +105,11 @@ export async function POST(request: NextRequest) {
             {
               onProgress: (p) => send({ type: 'progress', ...p }),
             },
+            {
+              imageGenerationEnabled: imageGenAvailable,
+              videoGenerationEnabled: false,
+              includeInteractive: includeInteractive !== false,
+            },
           );
 
           if (!outlineResult.success || !outlineResult.data) {
@@ -101,12 +121,43 @@ export async function POST(request: NextRequest) {
           const outlines = outlineResult.data;
           send({
             type: 'outlines_ready',
-            outlines: outlines.map((o) => ({ id: o.id, title: o.title, type: o.type, order: o.order })),
+            outlines: outlines.map((o) => ({
+              id: o.id,
+              title: o.title,
+              type: o.type,
+              order: o.order,
+              hasMedia: (o.mediaGenerations?.length ?? 0) > 0,
+            })),
           });
 
+          // Stage 2: Generate images in parallel if enabled
+          let generatedMediaMapping: ImageMapping = {};
+          if (imageGenAvailable) {
+            const allMediaGens = outlines
+              .filter((o) => o.mediaGenerations && o.mediaGenerations.length > 0)
+              .flatMap((o) => o.mediaGenerations!);
+
+            if (allMediaGens.length > 0) {
+              send({
+                type: 'progress',
+                stage: 2,
+                message: `正在生成 ${allMediaGens.filter((m) => m.type === 'image').length} 张配图...`,
+              });
+
+              generatedMediaMapping = Object.fromEntries(await batchGenerateImages(allMediaGens));
+
+              send({
+                type: 'images_ready',
+                count: Object.keys(generatedMediaMapping).length,
+                ids: Object.keys(generatedMediaMapping),
+              });
+            }
+          }
+
+          // Stage 3: Generate scene content
           send({
             type: 'progress',
-            stage: 2,
+            stage: 3,
             overallProgress: 50,
             message: `正在生成 ${outlines.length} 个场景内容...`,
           });
@@ -121,9 +172,28 @@ export async function POST(request: NextRequest) {
                 sceneId: outline.id,
                 title: outline.title,
                 order: outline.order,
+                sceneType: outline.type,
               });
 
-              const scene = await buildSceneFromOutline(outline, aiCall, stageId);
+              const scene = await buildSceneFromOutline(
+                outline,
+                aiCall,
+                stageId,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                generatedMediaMapping,
+              );
+
+              // Backfill generated images into the scene
+              if (scene && Object.keys(generatedMediaMapping).length > 0) {
+                backfillGeneratedImages(scene, generatedMediaMapping);
+              }
 
               completedCount++;
 
@@ -136,7 +206,7 @@ export async function POST(request: NextRequest) {
 
               send({
                 type: 'progress',
-                stage: 2,
+                stage: 3,
                 overallProgress: 50 + Math.floor((completedCount / outlines.length) * 50),
                 scenesGenerated: completedCount,
                 totalScenes: outlines.length,
@@ -152,6 +222,8 @@ export async function POST(request: NextRequest) {
             type: 'generation_complete',
             stageId,
             scenes: scenes.sort((a, b) => a.order - b.order),
+            imageGenUsed: imageGenAvailable,
+            imagesGenerated: Object.keys(generatedMediaMapping).length,
           });
         } catch (error) {
           log.error('PPT generation error:', error);
@@ -175,5 +247,21 @@ export async function POST(request: NextRequest) {
       JSON.stringify({ error: { message: String(error) } }),
       { status: 500, headers: { 'Content-Type': 'application/json' } },
     );
+  }
+}
+
+function backfillGeneratedImages(scene: Scene, mapping: ImageMapping): void {
+  if (scene.type !== 'slide') return;
+  const content = scene.content as { type: string; canvas?: import('@/lib/types/slides').Slide };
+  if (!content?.canvas?.elements) return;
+
+  for (const element of content.canvas.elements) {
+    if (element.type === 'image') {
+      const src = (element as Record<string, unknown>).src as string;
+      if (src && mapping[src]) {
+        (element as Record<string, unknown>).src = mapping[src];
+        log.debug(`Backfilled image ${src} with generated URL`);
+      }
+    }
   }
 }

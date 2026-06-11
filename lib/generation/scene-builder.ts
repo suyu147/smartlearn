@@ -76,6 +76,7 @@ export async function buildSceneFromOutline(
   agents?: AgentInfo[],
   onPhaseChange?: (phase: 'content' | 'actions') => void,
   userProfile?: string,
+  generatedMediaMapping?: ImageMapping,
 ): Promise<Scene | null> {
   // Apply type fallbacks
   outline = applyOutlineFallbacks(outline, !!languageModel);
@@ -91,6 +92,9 @@ export async function buildSceneFromOutline(
   log.debug(
     `imageMapping available: ${imageMapping ? Object.keys(imageMapping).length + ' keys' : 'undefined'}`,
   );
+  log.debug(
+    `generatedMediaMapping available: ${generatedMediaMapping ? Object.keys(generatedMediaMapping).length + ' keys' : 'undefined'}`,
+  );
   const content = await generateSceneContent(
     outline,
     aiCall,
@@ -98,7 +102,7 @@ export async function buildSceneFromOutline(
     imageMapping,
     languageModel,
     visionEnabled,
-    undefined,
+    generatedMediaMapping,
     agents,
   );
   if (!content) {

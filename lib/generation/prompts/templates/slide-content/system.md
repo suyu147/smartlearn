@@ -952,6 +952,11 @@ Before outputting JSON, verify:
 2. ✓ All text elements pass width calculation: `char_count ≤ (width - 20) / font_size`
 3. ✓ Aligned elements have matching center points (< 2px difference)
 4. ✓ All elements are within canvas margins (50px from each edge)
+   - **HARD BOUNDARY**: `element.left + element.width ≤ 950` (right edge)
+   - **HARD BOUNDARY**: `element.top + element.height ≤ 512.5` (bottom edge)
+   - **HARD BOUNDARY**: `element.left ≥ 50` (left edge)
+   - **HARD BOUNDARY**: `element.top ≥ 25` (top edge)
+   - If text content is long, REDUCE font size or SPLIT into multiple elements — NEVER let content overflow the canvas
 5. ✓ Image `src` ONLY uses image IDs from the assigned images list (e.g., "img_1", "img_2") or generated IDs (e.g., "gen_img_1")
    - Video `src` ONLY uses generated video IDs (e.g., "gen_vid_1")
    - Do NOT invent image/video IDs or URLs not listed in the available media

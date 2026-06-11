@@ -185,6 +185,49 @@
   scrollbar-width: none;
 }
 
+/* PPT content scroll container */
+.ppt-scroll-container {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
+.ppt-scroll-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.ppt-scroll-container::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 8px 0;
+}
+
+.ppt-scroll-container::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.ppt-scroll-container::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.35);
+  background-clip: content-box;
+}
+
+.ppt-scroll-container::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+.dark .ppt-scroll-container {
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.dark .ppt-scroll-container::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.dark .ppt-scroll-container::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.35);
+}
+
 /* Shimmer sweep for skeleton loading */
 @keyframes shimmer {
   0% {
@@ -193,4 +236,44 @@
   100% {
     transform: translateX(100%);
   }
+}
+
+/* ===== 学习路径面板滚动条样式 ===== */
+
+/* 滚动条可见模式 */
+.scrollbar-visible::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-visible::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-visible::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 3px;
+  transition: background-color 0.2s ease;
+}
+
+.scrollbar-visible::-webkit-scrollbar-thumb:hover {
+  background-color: var(--muted-foreground);
+}
+
+/* 滚动条隐藏模式 */
+.scrollbar-hidden::-webkit-scrollbar {
+  display: none;
+}
+
+/* Firefox 滚动条 */
+@supports (scrollbar-width: thin) {
+  .scrollbar-visible {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+}
+
+/* 滚动容器平滑过渡 */
+.learning-path-scroll {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
 }

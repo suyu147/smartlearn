@@ -4,40 +4,50 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useCanvasStore } from '@/lib/store/canvas';
 import { useStageStore } from '@/lib/store/stage';
 import { useMemo } from 'react';
+import type { Scene } from '@/lib/types/stage';
 import type { PPTElement } from '@/lib/types/slides';
 
 interface SpotlightOverlayProps {
-  elementId: string;
+  elementId?: string;
+  scene?: Scene | null;
+  dimness?: number;
 }
 
-export function SpotlightOverlay({ elementId }: SpotlightOverlayProps) {
+function resolveElementRect(scene: Scene | null | undefined, elementId: string | undefined) {
+  if (!scene || scene.type !== 'slide' || !elementId) return null;
+
+  const content = scene.content as { type: string; canvas?: import('@/lib/types/slides').Slide };
+  const slide = content?.canvas;
+  if (!slide) return null;
+
+  const element = slide.elements.find((el: PPTElement) => el.id === elementId);
+  if (!element) return null;
+
+  return {
+    x: element.left,
+    y: element.top,
+    width: element.width,
+    height: element.height,
+  };
+}
+
+export function SpotlightOverlay({ elementId, scene, dimness }: SpotlightOverlayProps) {
   const scenes = useStageStore((s) => s.scenes);
   const currentSceneId = useStageStore((s) => s.currentSceneId);
   const spotlightEffect = useCanvasStore((s) => s.spotlightEffect);
 
-  const elementRect = useMemo(() => {
-    const scene = currentSceneId ? scenes.find((s) => s.id === currentSceneId) : null;
-    if (!scene || scene.type !== 'slide') return null;
+  const activeScene = scene ?? (currentSceneId ? scenes.find((s) => s.id === currentSceneId) ?? null : null);
+  const activeElementId = elementId ?? spotlightEffect?.elementId;
+  const activeDimness = dimness ?? spotlightEffect?.dimness ?? 0.5;
 
-    const content = scene.content as { type: string; canvas?: import('@/lib/types/slides').Slide };
-    const slide = content?.canvas;
-    if (!slide) return null;
+  const elementRect = useMemo(
+    () => resolveElementRect(activeScene, activeElementId),
+    [activeScene, activeElementId],
+  );
 
-    const element = slide.elements.find((el: PPTElement) => el.id === elementId);
-    if (!element) return null;
-
-    return {
-      x: element.left,
-      y: element.top,
-      width: element.width,
-      height: element.height,
-    };
-  }, [scenes, currentSceneId, elementId]);
-
-  if (!elementRect || !spotlightEffect) return null;
+  if (!elementRect) return null;
 
   const padding = 12;
-  const dimness = spotlightEffect.dimness ?? 0.5;
 
   return (
     <AnimatePresence>
@@ -68,7 +78,7 @@ export function SpotlightOverlay({ elementId }: SpotlightOverlayProps) {
             y="0"
             width="100%"
             height="100%"
-            fill={`rgba(0, 0, 0, ${dimness})`}
+            fill={`rgba(0, 0, 0, ${activeDimness})`}
             mask="url(#spotlight-mask)"
           />
         </svg>

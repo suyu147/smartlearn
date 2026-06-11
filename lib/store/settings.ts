@@ -10,6 +10,7 @@ interface SettingsState {
   baseUrl: string;
   theme: 'light' | 'dark' | 'system';
   language: 'zh-CN' | 'en-US';
+  generatePptImages: boolean;
   maxTurns: string;
   selectedAgentIds: string[];
   asrProviderId: ASRProviderId;
@@ -26,6 +27,7 @@ interface SettingsState {
   setBaseUrl: (url: string) => void;
   setTheme: (theme: 'light' | 'dark' | 'system') => void;
   setLanguage: (lang: 'zh-CN' | 'en-US') => void;
+  setGeneratePptImages: (enabled: boolean) => void;
   setMaxTurns: (turns: string) => void;
   setSelectedAgentIds: (ids: string[]) => void;
 }
@@ -40,6 +42,7 @@ export const useSettingsStore = create<SettingsState>()(
       baseUrl: '',
       theme: 'system',
       language: 'zh-CN',
+      generatePptImages: false,
       maxTurns: '',
       selectedAgentIds: [],
       asrProviderId: 'openai-whisper' as ASRProviderId,
@@ -56,6 +59,7 @@ export const useSettingsStore = create<SettingsState>()(
       setBaseUrl: (baseUrl) => set({ baseUrl }),
       setTheme: (theme) => set({ theme }),
       setLanguage: (language) => set({ language }),
+      setGeneratePptImages: (generatePptImages) => set({ generatePptImages }),
       setMaxTurns: (maxTurns) => set({ maxTurns }),
       setSelectedAgentIds: (selectedAgentIds) => set({ selectedAgentIds }),
     }),

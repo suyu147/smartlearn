@@ -34,6 +34,7 @@ export async function generateSceneOutlinesFromRequirements(
     imageMapping?: ImageMapping;
     imageGenerationEnabled?: boolean;
     videoGenerationEnabled?: boolean;
+    includeInteractive?: boolean;
     researchContext?: string;
     teacherContext?: string;
   },
@@ -145,7 +146,10 @@ export async function generateSceneOutlinesFromRequirements(
     }));
 
     // Replace sequential gen_img_N/gen_vid_N with globally unique IDs
-    const result = uniquifyMediaElementIds(enriched);
+    const uniquified = uniquifyMediaElementIds(enriched);
+
+    // Deduplicate outlines with similar keyPoints
+    const result = deduplicateOutlines(uniquified);
 
     callbacks?.onProgress?.({
       currentStage: 1,
@@ -163,9 +167,67 @@ export async function generateSceneOutlinesFromRequirements(
 }
 
 /**
+ * Deduplicate outlines with highly similar keyPoints.
+ * If two slide outlines share >60% of their keyPoints text, merge the later one into the earlier one.
+ */
+function deduplicateOutlines(outlines: SceneOutline[]): SceneOutline[] {
+  if (outlines.length <= 1) return outlines;
+
+  const result: SceneOutline[] = [];
+  const seen = new Set<number>();
+
+  for (let i = 0; i < outlines.length; i++) {
+    if (seen.has(i)) continue;
+
+    const current = outlines[i];
+    // Only deduplicate slide-type outlines
+    if (current.type !== 'slide') {
+      result.push(current);
+      continue;
+    }
+
+    const currentPoints = new Set(
+      (current.keyPoints || []).map((p) => p.toLowerCase().trim()),
+    );
+
+    let isDuplicate = false;
+    for (let j = 0; j < i; j++) {
+      if (seen.has(j)) continue;
+      const prev = outlines[j];
+      if (prev.type !== 'slide') continue;
+
+      const prevPoints = new Set(
+        (prev.keyPoints || []).map((p) => p.toLowerCase().trim()),
+      );
+
+      const intersection = [...currentPoints].filter((p) => prevPoints.has(p));
+      const overlapRatio =
+        currentPoints.size > 0 ? intersection.length / currentPoints.size : 0;
+
+      if (overlapRatio > 0.6) {
+        log.warn(
+          `Deduplicating outline "${current.title}" (${Math.round(overlapRatio * 100)}% overlap with "${prev.title}")`,
+        );
+        seen.add(i);
+        isDuplicate = true;
+        break;
+      }
+    }
+
+    if (!isDuplicate) {
+      result.push(current);
+    }
+  }
+
+  // Re-index order
+  return result.map((o, i) => ({ ...o, order: i + 1 }));
+}
+
+/**
  * Apply type fallbacks for outlines that can't be generated as their declared type.
  * - interactive without interactiveConfig → slide
  * - pbl without pblConfig or languageModel → slide
+ * - quiz without quizConfig → add default quizConfig
  */
 export function applyOutlineFallbacks(
   outline: SceneOutline,
@@ -182,6 +244,19 @@ export function applyOutlineFallbacks(
       `PBL outline "${outline.title}" missing pblConfig or languageModel, falling back to slide`,
     );
     return { ...outline, type: 'slide' };
+  }
+  if (outline.type === 'quiz' && !outline.quizConfig) {
+    log.warn(
+      `Quiz outline "${outline.title}" missing quizConfig, adding defaults`,
+    );
+    return {
+      ...outline,
+      quizConfig: {
+        questionCount: 3,
+        difficulty: 'medium',
+        questionTypes: ['single', 'multiple', 'short_answer'],
+      },
+    };
   }
   return outline;
 }

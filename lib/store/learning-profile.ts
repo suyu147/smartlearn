@@ -6,6 +6,8 @@ import { DEFAULT_DIMENSIONS } from '@/lib/types/profile';
 
 interface LearningProfileState {
   profile: LearningProfile | null;
+  /** 归档的旧画像（key=profileId），用于保存聊天记录 */
+  archivedProfiles: Record<string, LearningProfile>;
   isChatOpen: boolean;
   isGenerating: boolean;
   setProfile: (profile: LearningProfile | null) => void;
@@ -13,6 +15,12 @@ interface LearningProfileState {
   setChatOpen: (open: boolean) => void;
   setGenerating: (generating: boolean) => void;
   addConversationMessage: (message: ConversationMessage) => void;
+  /** 将当前画像归档，返回归档ID（用于会话关联） */
+  archiveCurrentProfile: () => string | null;
+  /** 删除单个归档画像 */
+  clearArchivedProfile: (profileId: string) => void;
+  /** 删除全部归档画像 */
+  clearAllArchivedProfiles: () => void;
   reset: () => void;
 }
 
@@ -20,6 +28,7 @@ export const useLearningProfileStore = create<LearningProfileState>()(
   persist(
     immer((set, get) => ({
       profile: null,
+      archivedProfiles: {},
       isChatOpen: false,
       isGenerating: false,
 
@@ -113,8 +122,33 @@ export const useLearningProfileStore = create<LearningProfileState>()(
           return { profile: newProfile };
         }),
 
+      /** 将当前画像归档（保留聊天记录），返回归档的 profileId */
+      archiveCurrentProfile: () => {
+        const state = get();
+        if (!state.profile) return null;
+        const profileId = state.profile.id;
+        set((draft) => {
+          draft.archivedProfiles[profileId] = { ...state.profile! };
+        });
+        return profileId;
+      },
+
+      /** 删除单个归档画像（彻底清除聊天记录） */
+      clearArchivedProfile: (profileId: string) => {
+        set((draft) => {
+          delete draft.archivedProfiles[profileId];
+        });
+      },
+
+      /** 删除全部归档画像 */
+      clearAllArchivedProfiles: () => {
+        set((draft) => {
+          draft.archivedProfiles = {};
+        });
+      },
+
       reset: () => set({ profile: null, isChatOpen: false, isGenerating: false }),
     })),
-    { name: 'learning-profile-storage' },
+    { name: 'learning-profile-storage', partialize: (state) => ({ profile: state.profile, archivedProfiles: state.archivedProfiles }) },
   ),
 );
