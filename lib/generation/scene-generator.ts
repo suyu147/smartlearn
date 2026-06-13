@@ -162,21 +162,20 @@ export async function generateSceneContent(
   | GeneratedPBLContent
   | null
 > {
-  // If outline is interactive but missing interactiveConfig, fall back to slide
   if (outline.type === 'interactive' && !outline.interactiveConfig) {
     log.warn(
-      `Interactive outline "${outline.title}" missing interactiveConfig, falling back to slide`,
+      `Interactive outline "${outline.title}" missing interactiveConfig, synthesizing defaults`,
     );
-    const fallbackOutline = { ...outline, type: 'slide' as const };
-    return generateSlideContent(
-      fallbackOutline,
-      aiCall,
-      assignedImages,
-      imageMapping,
-      visionEnabled,
-      generatedMediaMapping,
-      agents,
-    );
+    outline = {
+      ...outline,
+      interactiveConfig: {
+        template: 'simulation',
+        subject: typeof outline.title === 'string' ? outline.title : 'interactive topic',
+        conceptName: outline.title,
+        conceptOverview: outline.description || outline.keyPoints?.join('；') || outline.title,
+        designIdea: `Create an interactive learning page for ${outline.title} with visible controls, real-time feedback, and one concrete experiment the learner can manipulate.`,
+      },
+    };
   }
 
   switch (outline.type) {

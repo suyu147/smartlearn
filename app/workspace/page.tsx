@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLearningPathStore } from '@/lib/store/learning-path';
 import { useLearningProfileStore } from '@/lib/store/learning-profile';
@@ -12,9 +12,14 @@ import { LearningPathPanel } from '@/components/workspace/learning-path-panel';
 import { ResourceViewer } from '@/components/workspace/resource-viewer';
 import { TutorChatPanel } from '@/components/workspace/tutor-chat-panel';
 import { WorkspaceHeader } from '@/components/workspace/workspace-header';
-import type { Resource, ResourceType } from '@/lib/types/resource';
+import { ALL_RESOURCE_TYPES, type Resource, type ResourceType } from '@/lib/types/resource';
 import type { LearningPath, LearningPathNode, PathNodeStatus } from '@/lib/types/learning-path';
-import { decideResourceTypes, shouldGeneratePPT } from '@/lib/generation/resource-decision';
+import {
+  buildNodeDecisionContext,
+  decideNodeResourcePlan,
+  type ResourceDecisionResultV2,
+} from '@/lib/generation/resource-decision';
+import { useResourceDecisionsStore } from '@/lib/store/resource-decisions';
 
 const VALID_NODE_STATUSES: PathNodeStatus[] = ['locked', 'available', 'in_progress', 'completed'];
 
@@ -113,9 +118,18 @@ export default function WorkspacePage() {
   const { profile } = useLearningProfileStore();
   const { path, setPath, storedPaths, updateNodeStatus, loadPathForSession, isPlanning, setPlanning } =
     useLearningPathStore();
-  const { addResource, loadResourcesForSession } = useResourcesStore();
+  const { addResource, removeResource, loadResourcesForSession } = useResourcesStore();
   const { sessions, currentSessionId, createSession, getCurrentSession } = useSessionsStore();
   const { providerId, modelId, apiKey, baseUrl, generatePptImages } = useSettingsStore();
+  const addDecisionLog = useResourceDecisionsStore((state) => state.addDecisionLog);
+  const decisionLogsBySession = useResourceDecisionsStore((state) => state.logsBySession);
+  const overridesBySession = useResourceDecisionsStore((state) => state.overridesBySession);
+  const feedbackBySession = useResourceDecisionsStore((state) => state.feedbackBySession);
+  const setNodeOverride = useResourceDecisionsStore((state) => state.setNodeOverride);
+  const clearNodeOverride = useResourceDecisionsStore((state) => state.clearNodeOverride);
+  const recordResourceClick = useResourceDecisionsStore((state) => state.recordResourceClick);
+  const recordResourceView = useResourceDecisionsStore((state) => state.recordResourceView);
+  const recordQuizResult = useResourceDecisionsStore((state) => state.recordQuizResult);
 
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
   const [generatingNodes, setGeneratingNodes] = useState<Set<string>>(new Set());
@@ -124,6 +138,56 @@ export default function WorkspacePage() {
   const hasAutoPlanned = useRef(false);
   const isGeneratingRef = useRef(false);
   const generatingNodeSetRef = useRef<Set<string>>(new Set());
+  const selectedResourceOpenedAtRef = useRef<number | null>(null);
+  const lastSelectedResourceRef = useRef<Resource | null>(null);
+
+  const decisionSuggestionsByNodeId = useMemo(() => {
+    if (!path || !profile) return {} as Record<string, ResourceDecisionResultV2>;
+
+    const loggedByNodeId = new Map(
+      (currentSessionId ? decisionLogsBySession[currentSessionId] ?? [] : []).map((log) => [log.nodeId, log.result]),
+    );
+    const overrides = currentSessionId ? overridesBySession[currentSessionId] ?? {} : {};
+    const sessionFeedback = currentSessionId ? feedbackBySession[currentSessionId] ?? [] : [];
+
+    return Object.fromEntries(
+      path.nodes.map((node, index) => {
+        const override = overrides[node.id];
+        const priorFeedback = sessionFeedback.filter((item) => {
+          const previousIndex = path.nodes.findIndex((candidate) => candidate.id === item.nodeId);
+          return previousIndex > -1 && previousIndex < index;
+        });
+        const existing = loggedByNodeId.get(node.id);
+        const baseDecision = decideNodeResourcePlan({
+          node: buildNodeDecisionContext(node, index, path.nodes.length),
+          profile: profile.dimensions,
+          existingResources: node.resources,
+          priorFeedback,
+          constraints: {
+            allowLLM: false,
+            allowPPT: true,
+            latencyBudgetMs: 200,
+            forceInclude: override?.selectedTypes,
+            forceExclude: override
+              ? (['document', 'mindmap', 'quiz', 'video', 'code', 'reading', 'ppt'] as ResourceType[]).filter(
+                  (type) => !override.selectedTypes.includes(type),
+                )
+              : undefined,
+          },
+        });
+
+        if (!existing) {
+          return [node.id, baseDecision];
+        }
+
+        if (!override) {
+          return [node.id, existing];
+        }
+
+        return [node.id, baseDecision];
+      }),
+    ) as Record<string, ResourceDecisionResultV2>;
+  }, [currentSessionId, decisionLogsBySession, feedbackBySession, overridesBySession, path, profile]);
 
   useEffect(() => {
     if (!isProfileComplete(profile?.dimensions ?? null)) {
@@ -148,34 +212,39 @@ export default function WorkspacePage() {
     if (!profile) return;
 
     const currentSession = currentSessionId ? getCurrentSession() : null;
-    const profileChanged = lastProfileIdRef.current !== null && lastProfileIdRef.current !== profile.id;
     const dimensions = profile.dimensions;
     const goal =
       dimensions.learningGoals.shortTerm?.join('；') ||
       dimensions.learningGoals.longTerm ||
       dimensions.knowledgeBase.subjects.map((subject) => subject.name).join('、');
 
-    if (!currentSession && sessions.length === 0) {
+    if (!currentSession || currentSession.profileId !== profile.id) {
       createSession(profile.id, goal);
       lastProfileIdRef.current = profile.id;
       return;
     }
 
-    if (profileChanged && currentSession?.profileId !== profile.id) {
-      createSession(profile.id, goal);
-    }
-
     lastProfileIdRef.current = profile.id;
-  }, [profile, currentSessionId, sessions.length, createSession, getCurrentSession]);
+  }, [profile, currentSessionId, createSession, getCurrentSession]);
+
+  const findNodeIdByResourceId = (resourceId: string) => {
+    return path?.nodes.find((node) => node.resources.some((resource) => resource.resourceId === resourceId))?.id ?? null;
+  };
 
   useEffect(() => {
-    if (!path) return;
+    const previousResource = lastSelectedResourceRef.current;
+    const openedAt = selectedResourceOpenedAtRef.current;
 
-    const reconciledPath = reconcilePathStatuses(path);
-    if (reconciledPath !== path) {
-      setPath(reconciledPath);
+    if (previousResource && openedAt && currentSessionId) {
+      const previousNodeId = findNodeIdByResourceId(previousResource.id);
+      if (previousNodeId) {
+        recordResourceView(currentSessionId, previousNodeId, previousResource.type, Date.now() - openedAt);
+      }
     }
-  }, [path, setPath]);
+
+    lastSelectedResourceRef.current = selectedResource;
+    selectedResourceOpenedAtRef.current = selectedResource ? Date.now() : null;
+  }, [currentSessionId, path, recordResourceView, selectedResource]);
 
   const updateNodeResource = useCallback((nodeId: string, resource: Resource) => {
     const sessionId = useSessionsStore.getState().currentSessionId;
@@ -219,6 +288,36 @@ export default function WorkspacePage() {
       };
     });
   }, []);
+
+  const removeNodeResources = useCallback((nodeId: string) => {
+    const sessionId = useSessionsStore.getState().currentSessionId;
+    const currentPath = useLearningPathStore.getState().path;
+    const targetNode = currentPath?.nodes.find((node) => node.id === nodeId);
+    if (!targetNode) return;
+
+    for (const resource of targetNode.resources) {
+      removeResource(resource.resourceId);
+    }
+
+    useLearningPathStore.setState((state) => {
+      if (!state.path) return {};
+      const nextNodes = state.path.nodes.map((node) =>
+        node.id === nodeId
+          ? { ...node, resources: [], quizId: undefined }
+          : node,
+      );
+      const nextPath = { ...state.path, nodes: nextNodes };
+      return {
+        path: nextPath,
+        storedPaths: sessionId ? { ...state.storedPaths, [sessionId]: nextPath } : state.storedPaths,
+      };
+    });
+
+    setSelectedResource((current) => {
+      if (!current) return current;
+      return targetNode.resources.some((item) => item.resourceId === current.id) ? null : current;
+    });
+  }, [removeResource]);
 
   const parseResourceSSE = useCallback(
     async (response: Response, nodeId: string) => {
@@ -303,19 +402,60 @@ export default function WorkspacePage() {
       setGeneratingNodes((prev) => new Set(prev).add(node.id));
 
       try {
-        const existingTypes = node.resources.map((resource) => resource.type) as ResourceType[];
-        const decision = decideResourceTypes({
-          knowledgePoints: node.knowledgePoints,
-          nodeTitle: node.title,
+        const nodeIndex = path?.nodes.findIndex((item) => item.id === node.id) ?? -1;
+        const sessionOverrides = overridesBySession[currentSessionId] ?? {};
+        const override = sessionOverrides[node.id];
+        const decisionInput = {
+          node: buildNodeDecisionContext(node, Math.max(nodeIndex, 0), path?.nodes.length ?? 1),
           profile: profile.dimensions,
-          existingTypes,
-        });
-        const shouldRequestPPT = shouldGeneratePPT(
-          node.knowledgePoints,
-          existingTypes.includes('ppt'),
-        );
+          existingResources: node.resources,
+          constraints: {
+            allowLLM: true,
+            allowPPT: true,
+            latencyBudgetMs: 1200,
+            llmTimeoutMs: 2500,
+            forceInclude: override?.selectedTypes,
+            forceExclude: override
+              ? ALL_RESOURCE_TYPES.filter((type) => !override.selectedTypes.includes(type))
+              : undefined,
+          },
+        };
 
-        if (decision.types.length === 0 && !shouldRequestPPT) {
+        let decision: ResourceDecisionResultV2;
+        try {
+          const response = await fetch('/api/resource-decision', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              decisionInput,
+              aiConfig: { providerId, modelId, apiKey, baseUrl },
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`resource decision failed: ${response.status}`);
+          }
+
+          decision = (await response.json()) as ResourceDecisionResultV2;
+        } catch (error) {
+          console.warn('Enhanced resource decision failed, fallback to local rules', error);
+          decision = decideNodeResourcePlan({
+            ...decisionInput,
+            constraints: {
+              ...decisionInput.constraints,
+              allowLLM: false,
+            },
+          });
+        }
+
+        addDecisionLog({
+          sessionId: currentSessionId,
+          nodeId: node.id,
+          createdAt: new Date().toISOString(),
+          result: decision,
+        });
+
+        if (decision.execution.resourceTypes.length === 0 && !decision.execution.shouldGeneratePPT) {
           return;
         }
 
@@ -324,13 +464,13 @@ export default function WorkspacePage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             knowledgePoints: node.knowledgePoints,
-            resourceTypes: decision.types,
+            resourceTypes: decision.execution.resourceTypes,
             profile: profile.dimensions,
             aiConfig: { providerId, modelId, apiKey, baseUrl },
           }),
         });
 
-        const pptPromise = shouldRequestPPT
+        const pptPromise = decision.execution.shouldGeneratePPT
           ? fetch('/api/generate/ppt', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -339,6 +479,7 @@ export default function WorkspacePage() {
                 language: 'zh-CN',
                 aiConfig: { providerId, modelId, apiKey, baseUrl },
                 enableImageGeneration: generatePptImages,
+                includeInteractive: true,
               }),
             })
           : Promise.resolve(null);
@@ -359,7 +500,7 @@ export default function WorkspacePage() {
         });
       }
     },
-    [apiKey, baseUrl, currentSessionId, generatePptImages, modelId, parsePPTSSE, parseResourceSSE, profile, providerId],
+    [addDecisionLog, apiKey, baseUrl, currentSessionId, generatePptImages, modelId, parsePPTSSE, parseResourceSSE, path, profile, providerId],
   );
 
   const autoPlanPath = useCallback(
@@ -456,6 +597,48 @@ export default function WorkspacePage() {
     });
   }, [currentSessionId, generateNodeResources, path]);
 
+  const handleSuggestionSelection = useCallback(
+    async (nodeId: string, selectedTypes: ResourceType[]) => {
+      if (!currentSessionId || !path) return;
+
+      const normalizedTypes = Array.from(new Set(selectedTypes));
+      const node = path.nodes.find((item) => item.id === nodeId);
+      if (!node) return;
+
+      if (normalizedTypes.length === 0) {
+        clearNodeOverride(currentSessionId, nodeId);
+        removeNodeResources(nodeId);
+        return;
+      }
+
+      setNodeOverride(currentSessionId, nodeId, normalizedTypes);
+      removeNodeResources(nodeId);
+      await generateNodeResources({ ...node, resources: [] });
+    },
+    [clearNodeOverride, currentSessionId, generateNodeResources, path, removeNodeResources, setNodeOverride],
+  );
+
+  const handleResourceSelection = useCallback(
+    (resource: Resource) => {
+      setSelectedResource(resource);
+      if (!currentSessionId) return;
+      const nodeId = findNodeIdByResourceId(resource.id);
+      if (!nodeId) return;
+      recordResourceClick(currentSessionId, nodeId, resource.type);
+    },
+    [currentSessionId, findNodeIdByResourceId, recordResourceClick],
+  );
+
+  const handleQuizResult = useCallback(
+    (resource: Resource, result: { score: number; completed: boolean }) => {
+      if (!currentSessionId) return;
+      const nodeId = findNodeIdByResourceId(resource.id);
+      if (!nodeId) return;
+      recordQuizResult(currentSessionId, nodeId, result.score, result.completed);
+    },
+    [currentSessionId, findNodeIdByResourceId, recordQuizResult],
+  );
+
   const handleNodeComplete = useCallback(
     (nodeId: string) => {
       updateNodeStatus(nodeId, 'completed');
@@ -470,11 +653,13 @@ export default function WorkspacePage() {
         <LearningPathPanel
           path={path}
           generatingNodes={generatingNodes}
-          onSelectResource={setSelectedResource}
+          decisionSuggestionsByNodeId={decisionSuggestionsByNodeId}
+          onSuggestionSelection={handleSuggestionSelection}
+          onSelectResource={handleResourceSelection}
           onNodeComplete={handleNodeComplete}
         />
         <div className="flex-1 overflow-auto border-x">
-          <ResourceViewer resource={selectedResource} />
+          <ResourceViewer resource={selectedResource} onQuizResult={handleQuizResult} />
         </div>
         <TutorChatPanel />
       </div>

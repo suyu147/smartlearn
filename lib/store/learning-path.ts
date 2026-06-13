@@ -1,7 +1,57 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { LearningPath, PathNodeStatus } from '@/lib/types/learning-path';
+import type { LearningPath, LearningPathNode, PathNodeStatus } from '@/lib/types/learning-path';
 import { useSessionsStore } from './sessions';
+
+function getNodeDependencies(path: LearningPath, node: LearningPathNode) {
+  if (node.prerequisites.length > 0) {
+    return node.prerequisites;
+  }
+
+  return path.edges.filter((edge) => edge.to === node.id).map((edge) => edge.from);
+}
+
+function reconcilePathStatuses(path: LearningPath): LearningPath {
+  const completedNodeIds = new Set(
+    path.nodes.filter((node) => node.status === 'completed').map((node) => node.id),
+  );
+
+  const eligibleNodeIds = new Set(
+    path.nodes
+      .filter((node) => node.status !== 'completed')
+      .filter((node) => getNodeDependencies(path, node).every((dependencyId) => completedNodeIds.has(dependencyId)))
+      .map((node) => node.id),
+  );
+
+  let nextActiveNodeId = path.nodes.find(
+    (node) => node.status === 'in_progress' && eligibleNodeIds.has(node.id),
+  )?.id;
+
+  if (!nextActiveNodeId) {
+    nextActiveNodeId = path.nodes.find(
+      (node) => node.status !== 'completed' && eligibleNodeIds.has(node.id),
+    )?.id;
+  }
+
+  return {
+    ...path,
+    nodes: path.nodes.map((node) => {
+      if (node.status === 'completed') {
+        return { ...node, status: 'completed' as const };
+      }
+
+      if (!eligibleNodeIds.has(node.id)) {
+        return { ...node, status: 'locked' as const };
+      }
+
+      if (node.id === nextActiveNodeId) {
+        return { ...node, status: 'in_progress' as const };
+      }
+
+      return { ...node, status: 'available' as const };
+    }),
+  };
+}
 
 interface StoredPathData {
   [sessionId: string]: LearningPath;
@@ -45,12 +95,12 @@ export const useLearningPathStore = create<LearningPathState>()(
         set((state) => {
           const currentPath = state.path ?? state.storedPaths[sessionId ?? ''] ?? null;
           if (!currentPath) return state;
-          const updatedPath = {
+          const updatedPath = reconcilePathStatuses({
             ...currentPath,
-            nodes: currentPath.nodes.map((n) =>
-              n.id === nodeId ? { ...n, status } : n,
+            nodes: currentPath.nodes.map((node) =>
+              node.id === nodeId ? { ...node, status } : node,
             ),
-          };
+          });
           if (!sessionId) return { path: updatedPath };
           return {
             path: updatedPath,

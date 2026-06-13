@@ -48,7 +48,7 @@ export function ProfileChat() {
       }, 2500);
       return () => clearTimeout(timer);
     }
-  }, [profileComplete, router]);
+  }, [profileComplete, profile?.id, router]);
 
   useEffect(() => {
     if (messages.length === 0) {

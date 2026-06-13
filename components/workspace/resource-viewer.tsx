@@ -1,20 +1,26 @@
 'use client';
 
 import { BookOpen } from 'lucide-react';
-import type { Resource } from '@/lib/types/resource';
-import { RESOURCE_TYPE_LABELS } from '@/lib/types/resource';
+import { RESOURCE_TYPE_LABELS, type Resource } from '@/lib/types/resource';
 import { DocumentViewer } from '@/components/resources/document-viewer';
 import { MindmapViewer } from '@/components/resources/mindmap-viewer';
 import { QuizPlayer } from '@/components/resources/quiz-player';
 import { CodeRunner } from '@/components/resources/code-runner';
 import { VideoPlayer } from '@/components/resources/video-player';
 import { PPTViewer } from './ppt-viewer';
+import { ReadingViewer } from '@/components/resources/reading-viewer';
+
+interface QuizResultPayload {
+  score: number;
+  completed: boolean;
+}
 
 interface Props {
   resource: Resource | null;
+  onQuizResult?: (resource: Resource, result: QuizResultPayload) => void;
 }
 
-export function ResourceViewer({ resource }: Props) {
+export function ResourceViewer({ resource, onQuizResult }: Props) {
   if (!resource) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -40,12 +46,18 @@ export function ResourceViewer({ resource }: Props) {
 
       {resource.type === 'document' && <DocumentViewer content={resource.content} title={resource.title} />}
       {resource.type === 'mindmap' && <MindmapViewer content={resource.content} title={resource.title} />}
-      {resource.type === 'quiz' && <QuizPlayer content={resource.content} title={resource.title} />}
+      {resource.type === 'quiz' && (
+        <QuizPlayer
+          content={resource.content}
+          title={resource.title}
+          onResult={(result) => onQuizResult?.(resource, result)}
+        />
+      )}
       {resource.type === 'code' && <CodeRunner content={resource.content} title={resource.title} />}
       {resource.type === 'video' && (
         <VideoPlayer content={resource.content} title={resource.title} videoData={resource.metadata?.videoData} />
       )}
-      {resource.type === 'reading' && <DocumentViewer content={resource.content} title={resource.title} />}
+      {resource.type === 'reading' && <ReadingViewer content={resource.content} title={resource.title} />}
       {resource.type === 'ppt' && (
         <PPTViewer scenes={resource.metadata?.pptData} />
       )}

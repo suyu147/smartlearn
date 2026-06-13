@@ -5,27 +5,34 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { PathTimeline } from '@/components/learning-path/path-timeline';
 import { PathProgress } from '@/components/learning-path/path-progress';
-import { useLearningPathStore } from '@/lib/store/learning-path';
-import { useResourcesStore } from '@/lib/store/resources';
-import type { LearningPath } from '@/lib/types/learning-path';
+import { useResourcesStore } from '@/lib/store/resources';import type { LearningPath } from '@/lib/types/learning-path';
 import type { Resource } from '@/lib/types/resource';
+import type { ResourceDecisionResultV2 } from '@/lib/generation/resource-decision';
+import type { ResourceType } from '@/lib/types/resource';
 
 interface Props {
   path: LearningPath | null;
   generatingNodes: Set<string>;
+  decisionSuggestionsByNodeId: Record<string, ResourceDecisionResultV2>;
+  onSuggestionSelection: (nodeId: string, selectedTypes: ResourceType[]) => void;
   onSelectResource: (resource: Resource) => void;
   onNodeComplete: (nodeId: string) => void;
 }
 
-export function LearningPathPanel({ path, generatingNodes, onSelectResource, onNodeComplete }: Props) {
+export function LearningPathPanel({
+  path,
+  generatingNodes,
+  decisionSuggestionsByNodeId,
+  onSuggestionSelection,
+  onSelectResource,
+  onNodeComplete,
+}: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const [showScrollbar, setShowScrollbar] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollContentRef = useRef<HTMLDivElement>(null);
 
-  const { updateNodeStatus } = useLearningPathStore();
   const { resources } = useResourcesStore();
-
   function handleClickResource(resourceId: string) {
     const found = resources.find(r => r.id === resourceId);
     if (found) {
@@ -102,7 +109,13 @@ export function LearningPathPanel({ path, generatingNodes, onSelectResource, onN
         <div ref={scrollContentRef} className="space-y-3 p-3">
           <PathProgress />
           <div className="w-[117%] origin-top-left scale-[0.85]">
-            <PathTimeline onClickResource={handleClickResource} />
+            <PathTimeline
+              onClickResource={handleClickResource}
+              generatingNodes={generatingNodes}
+              decisionSuggestionsByNodeId={decisionSuggestionsByNodeId}
+              onSuggestionSelection={onSuggestionSelection}
+              onNodeComplete={onNodeComplete}
+            />
           </div>
         </div>
       </div>

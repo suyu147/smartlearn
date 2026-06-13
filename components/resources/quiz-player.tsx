@@ -44,7 +44,15 @@ interface EvaluationResult {
 
 type EvalStatus = 'idle' | 'evaluating' | 'done';
 
-export function QuizPlayer({ content, title }: { content: string; title: string }) {
+export function QuizPlayer({
+  content,
+  title,
+  onResult,
+}: {
+  content: string;
+  title: string;
+  onResult?: (result: { score: number; completed: boolean }) => void;
+}) {
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, string>>({});
   const [showResults, setShowResults] = useState(false);
   const [evalStatus, setEvalStatus] = useState<EvalStatus>('idle');
@@ -388,7 +396,12 @@ export function QuizPlayer({ content, title }: { content: string; title: string 
 
         <div className="flex gap-3">
           <Button
-            onClick={() => setShowResults(true)}
+            onClick={() => {
+              const correctCount = quizzes.filter((quiz, index) => checkAnswer(quiz, selectedAnswers[index])).length;
+              const score = quizzes.length > 0 ? Math.round((correctCount / quizzes.length) * 100) : 0;
+              setShowResults(true);
+              onResult?.({ score, completed: true });
+            }}
             disabled={Object.keys(selectedAnswers).length === 0}
           >
             提交答案

@@ -22,6 +22,7 @@ import { MindmapViewer } from './mindmap-viewer';
 import { QuizPlayer } from './quiz-player';
 import { CodeRunner } from './code-runner';
 import { VideoPlayer } from './video-player';
+import { ReadingViewer } from './reading-viewer';
 
 const iconMap: Record<string, React.ElementType> = {
   FileText,
@@ -117,7 +118,7 @@ export function ResourceGrid() {
               <VideoPlayer content={selected.content} title={selected.title} videoData={selected.metadata?.videoData} />
             )}
             {selected.type === 'reading' && (
-              <DocumentViewer content={selected.content} title={selected.title} />
+              <ReadingViewer content={selected.content} title={selected.title} />
             )}
             {selected.type === 'ppt' && (
               <div className="space-y-4">

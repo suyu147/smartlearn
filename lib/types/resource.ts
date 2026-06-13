@@ -1,6 +1,62 @@
 export type ResourceType = 'document' | 'mindmap' | 'quiz' | 'video' | 'code' | 'reading' | 'ppt';
 
+export const ALL_RESOURCE_TYPES: ResourceType[] = ['document', 'mindmap', 'quiz', 'video', 'code', 'reading', 'ppt'];
+
 export type ResourceStatus = 'generating' | 'ready' | 'failed';
+
+export interface DocumentSectionOutline {
+  id: string;
+  title: string;
+  estimatedLength: 'short' | 'medium' | 'long';
+  elements: Array<'text' | 'code' | 'callout' | 'table'>;
+  summary: string;
+}
+
+export interface DocumentSectionBlock {
+  type: 'text' | 'code' | 'callout' | 'table';
+  title?: string;
+  content?: string;
+  language?: string;
+  headers?: string[];
+  rows?: string[][];
+  tone?: 'info' | 'warning' | 'success';
+}
+
+export interface StructuredDocumentSection {
+  id: string;
+  title: string;
+  blocks: DocumentSectionBlock[];
+}
+
+export interface StructuredDocument {
+  format: 'structured_document_v1';
+  introduction?: string;
+  outline: DocumentSectionOutline[];
+  sections: StructuredDocumentSection[];
+  summary?: string;
+}
+
+export interface ReadingCard {
+  id: string;
+  title: string;
+  description: string;
+  reason: string;
+  coverPlaceholder: string;
+  suggestedUse?: string;
+}
+
+export interface ReadingLink {
+  title: string;
+  url: string;
+  note?: string;
+}
+
+export interface StructuredReading {
+  format: 'structured_reading_v1';
+  intro?: string;
+  cards: ReadingCard[];
+  externalLinks: ReadingLink[];
+}
 
 export interface Resource {
   id: string;
@@ -16,6 +72,8 @@ export interface Resource {
     profileUsed?: boolean;
     videoData?: import('@/lib/video/generate').VideoGenerationResult;
     pptData?: import('@/lib/types/stage').Scene[];
+    structuredDocument?: StructuredDocument;
+    structuredReading?: StructuredReading;
   };
   sourceAgent: string;
   status: ResourceStatus;

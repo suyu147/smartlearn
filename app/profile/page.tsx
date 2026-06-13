@@ -55,7 +55,7 @@ function ProfilePageContent() {
     if (!isNewChat && isProfileComplete(profile?.dimensions ?? null)) {
       router.replace('/workspace');
     }
-  }, [profile, router, isNewChat]);
+  }, [profile?.id, profile?.updatedAt, router, isNewChat]);
 
   const archivedList = Object.values(archivedProfiles);
 

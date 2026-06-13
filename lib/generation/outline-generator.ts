@@ -145,8 +145,10 @@ export async function generateSceneOutlinesFromRequirements(
       language: requirements.language,
     }));
 
+    const withRequiredInteractive = ensureInteractiveOutline(enriched, requirements, options?.includeInteractive !== false);
+
     // Replace sequential gen_img_N/gen_vid_N with globally unique IDs
-    const uniquified = uniquifyMediaElementIds(enriched);
+    const uniquified = uniquifyMediaElementIds(withRequiredInteractive);
 
     // Deduplicate outlines with similar keyPoints
     const result = deduplicateOutlines(uniquified);
@@ -223,6 +225,61 @@ function deduplicateOutlines(outlines: SceneOutline[]): SceneOutline[] {
   return result.map((o, i) => ({ ...o, order: i + 1 }));
 }
 
+function ensureInteractiveOutline(
+  outlines: SceneOutline[],
+  requirements: UserRequirements,
+  includeInteractive: boolean,
+): SceneOutline[] {
+  if (!includeInteractive) {
+    return outlines;
+  }
+
+  const existingInteractiveIndex = outlines.findIndex((outline) => outline.type === 'interactive');
+  if (existingInteractiveIndex !== -1) {
+    return outlines.map((outline, index) =>
+      index === existingInteractiveIndex && !outline.interactiveConfig
+        ? { ...outline, interactiveConfig: createDefaultInteractiveConfig(outline) }
+        : outline,
+    );
+  }
+
+  const fallbackSource =
+    outlines.find((outline) => outline.keyPoints && outline.keyPoints.length > 0)
+    ?? outlines[0];
+
+  if (!fallbackSource) {
+    return outlines;
+  }
+
+  const injectedOutline: SceneOutline = {
+    ...fallbackSource,
+    id: nanoid(),
+    title: `${fallbackSource.title} - 交互探索`,
+    type: 'interactive',
+    order: outlines.length + 1,
+    description: fallbackSource.description || `通过交互方式理解 ${fallbackSource.title}`,
+    keyPoints: fallbackSource.keyPoints?.length
+      ? fallbackSource.keyPoints
+      : [requirements.requirement],
+    interactiveConfig: createDefaultInteractiveConfig(fallbackSource),
+  };
+
+  return [...outlines, injectedOutline].map((outline, index) => ({
+    ...outline,
+    order: index + 1,
+  }));
+}
+
+function createDefaultInteractiveConfig(outline: SceneOutline) {
+  return {
+    template: 'simulation',
+    subject: outline.title,
+    conceptName: outline.title,
+    conceptOverview: outline.description || outline.keyPoints?.join('；') || outline.title,
+    designIdea: `Create a self-contained interactive lesson for ${outline.title} with at least one manipulable control, one observable output, and concise guidance for experimentation.`,
+  };
+}
+
 /**
  * Apply type fallbacks for outlines that can't be generated as their declared type.
  * - interactive without interactiveConfig → slide
@@ -235,9 +292,12 @@ export function applyOutlineFallbacks(
 ): SceneOutline {
   if (outline.type === 'interactive' && !outline.interactiveConfig) {
     log.warn(
-      `Interactive outline "${outline.title}" missing interactiveConfig, falling back to slide`,
+      `Interactive outline "${outline.title}" missing interactiveConfig, synthesizing defaults`,
     );
-    return { ...outline, type: 'slide' };
+    return {
+      ...outline,
+      interactiveConfig: createDefaultInteractiveConfig(outline),
+    };
   }
   if (outline.type === 'pbl' && (!outline.pblConfig || !hasLanguageModel)) {
     log.warn(
