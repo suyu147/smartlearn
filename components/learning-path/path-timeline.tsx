@@ -195,6 +195,14 @@ export function PathTimeline({
                         {node.resources.map((res, i) => (
                           <button
                             key={res.resourceId || `res-${i}`}
+                            draggable
+                            onDragStart={(event) => {
+                              event.dataTransfer.setData(
+                                'application/x-smartlearn-resource',
+                                JSON.stringify({ resourceId: res.resourceId }),
+                              );
+                              event.dataTransfer.effectAllowed = 'copy';
+                            }}
                             onClick={(e) => handleResourceClick(e, res.resourceId)}
                             className="inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground cursor-pointer"
                           >

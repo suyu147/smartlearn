@@ -15,6 +15,7 @@ export interface TutorChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  attachedResourceIds?: string[];
 }
 
 interface SessionsState {

@@ -43,13 +43,19 @@ export function WorkspaceHeader({ profile }: Props) {
   const { sessions, currentSessionId, switchSession, deleteSession, updateSessionStatus } = useSessionsStore();
   const { loadPathForSession, deleteSessionData: deletePathData } = useLearningPathStore();
   const { loadResourcesForSession, deleteSessionData: deleteResourceData } = useResourcesStore();
-  const { clearArchivedProfile } = useLearningProfileStore();
+  const { clearArchivedProfile, restoreArchivedProfile } = useLearningProfileStore();
 
   const [historyOpen, setHistoryOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
   function handleSwitchSession(sessionId: string) {
     if (sessionId === currentSessionId) return;
+
+    const targetSession = sessions.find((session) => session.id === sessionId);
+    if (targetSession?.profileId) {
+      restoreArchivedProfile(targetSession.profileId);
+    }
+
     switchSession(sessionId);
     loadPathForSession(sessionId);
     loadResourcesForSession(sessionId);

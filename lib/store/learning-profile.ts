@@ -11,6 +11,7 @@ interface LearningProfileState {
   isChatOpen: boolean;
   isGenerating: boolean;
   setProfile: (profile: LearningProfile | null) => void;
+  restoreArchivedProfile: (profileId: string) => LearningProfile | null;
   updateDimensions: (dimensions: Partial<ProfileDimensions>) => void;
   setChatOpen: (open: boolean) => void;
   setGenerating: (generating: boolean) => void;
@@ -103,6 +104,17 @@ export const useLearningProfileStore = create<LearningProfileState>()(
       setChatOpen: (isChatOpen) => set({ isChatOpen }),
 
       setGenerating: (isGenerating) => set({ isGenerating }),
+
+      /** 恢复某个归档画像为当前画像 */
+      restoreArchivedProfile: (profileId: string) => {
+        const archivedProfile = get().archivedProfiles[profileId];
+        if (!archivedProfile) return null;
+        set({
+          profile: { ...archivedProfile },
+          isChatOpen: true,
+        });
+        return archivedProfile;
+      },
 
       addConversationMessage: (message) =>
         set((state) => {

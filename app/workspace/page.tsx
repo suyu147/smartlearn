@@ -661,7 +661,7 @@ export default function WorkspacePage() {
         <div className="flex-1 overflow-auto border-x">
           <ResourceViewer resource={selectedResource} onQuizResult={handleQuizResult} />
         </div>
-        <TutorChatPanel />
+        <TutorChatPanel selectedResource={selectedResource} />
       </div>
     </div>
   );
