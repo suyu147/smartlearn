@@ -4,6 +4,33 @@ export const ALL_RESOURCE_TYPES: ResourceType[] = ['document', 'mindmap', 'quiz'
 
 export type ResourceStatus = 'generating' | 'ready' | 'failed';
 
+export interface VideoSource {
+  id: string;
+  title: string;
+  description: string;
+  url: string;
+  embedUrl?: string;
+  coverImageUrl: string;
+  duration?: string;
+  author?: string;
+  authorAvatar?: string;
+  viewCount?: number;
+  platform: 'bilibili' | 'youtube' | 'local' | 'other';
+  publishedAt?: string;
+  relevanceScore?: number;
+  matchedKeywords?: string[];
+  tags?: string[];
+}
+
+export interface VideoSearchResult {
+  format: 'video_search_v1';
+  query: string;
+  knowledgePoints: string[];
+  videos: VideoSource[];
+  totalFound: number;
+  searchSources: string[];
+}
+
 export interface DocumentSectionOutline {
   id: string;
   title: string;
@@ -70,7 +97,7 @@ export interface Resource {
     duration?: number;
     language?: string;
     profileUsed?: boolean;
-    videoData?: import('@/lib/video/generate').VideoGenerationResult;
+    videoData?: VideoSearchResult;
     pptData?: import('@/lib/types/stage').Scene[];
     structuredDocument?: StructuredDocument;
     structuredReading?: StructuredReading;

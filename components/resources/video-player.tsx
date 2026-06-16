@@ -1,233 +1,225 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Play, Clock, FileText, ChevronDown, ChevronUp, Image as ImageIcon, Palette } from 'lucide-react';
-import { parseVideoScript, type VideoGenerationResult } from '@/lib/video/generate';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Clock, ExternalLink, Eye, Play, Search, User } from 'lucide-react';
+import type { VideoSearchResult, VideoSource } from '@/lib/types/resource';
 
-function formatDuration(seconds: number): string {
-  const min = Math.floor(seconds / 60);
-  const sec = seconds % 60;
-  return min > 0 ? `${min}分${sec > 0 ? sec + '秒' : ''}` : `${sec}秒`;
+function parseVideoData(content: string, videoData?: VideoSearchResult): VideoSearchResult {
+  if (videoData) {
+    return videoData;
+  }
+
+  try {
+    const parsed = JSON.parse(content) as VideoSearchResult;
+    if (parsed?.format === 'video_search_v1' && Array.isArray(parsed.videos)) {
+      return parsed;
+    }
+  } catch {
+  }
+
+  return {
+    format: 'video_search_v1',
+    query: '',
+    knowledgePoints: [],
+    videos: [],
+    totalFound: 0,
+    searchSources: [],
+  };
 }
 
-export function VideoPlayer({ content, title, videoData }: { content: string; title: string; videoData?: VideoGenerationResult }) {
-  const [expandedScenes, setExpandedScenes] = useState<Set<number>>(new Set());
-  const [showFullScript, setShowFullScript] = useState(false);
+function platformLabel(platform: VideoSource['platform']): string {
+  switch (platform) {
+    case 'bilibili':
+      return 'B站';
+    case 'youtube':
+      return 'YouTube';
+    case 'local':
+      return '本地知识库';
+    default:
+      return '其他';
+  }
+}
 
-  const parsed = videoData || parseVideoScript(content);
-  const hasScenes = parsed.scenes.length > 0;
-  const totalDuration = parsed.scenes.reduce((sum, s) => sum + s.duration, 0);
+function formatSearchSource(source: string): string {
+  switch (source) {
+    case 'bilibili':
+      return 'B站';
+    case 'local':
+      return '本地知识库';
+    default:
+      return source;
+  }
+}
 
-  const toggleScene = (index: number) => {
-    setExpandedScenes((prev) => {
-      const next = new Set(prev);
-      if (next.has(index)) {
-        next.delete(index);
-      } else {
-        next.add(index);
-      }
-      return next;
-    });
+function formatRelevance(score?: number): string | null {
+  if (typeof score !== 'number') return null;
+  return `${Math.round(score * 100)}% 匹配`;
+}
+
+export function VideoPlayer({
+  content,
+  title,
+  videoData,
+}: {
+  content: string;
+  title: string;
+  videoData?: VideoSearchResult;
+}) {
+  const [selectedVideo, setSelectedVideo] = useState<VideoSource | null>(null);
+  const [playerOpen, setPlayerOpen] = useState(false);
+
+  const parsed = useMemo(() => parseVideoData(content, videoData), [content, videoData]);
+
+  const handlePlay = (video: VideoSource) => {
+    setSelectedVideo(video);
+    setPlayerOpen(true);
   };
-
-  const expandAll = () => {
-    setExpandedScenes(new Set(parsed.scenes.map((_, i) => i)));
-  };
-
-  const collapseAll = () => {
-    setExpandedScenes(new Set());
-  };
-
-  const sceneTimeRanges = useMemo(() => {
-    return parsed.scenes.reduce<Array<{ start: number; end: number }>>(
-      (ranges, scene, i) => {
-        const prevEnd = i > 0 ? ranges[i - 1].end : 0;
-        ranges.push({ start: prevEnd, end: prevEnd + scene.duration });
-        return ranges;
-      },
-      [],
-    );
-  }, [parsed.scenes]);
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex flex-wrap items-center gap-2">
           <Play className="h-4 w-4" />
           {title}
-          {hasScenes && (
-            <Badge variant="secondary">{parsed.scenes.length}个片段</Badge>
-          )}
-          {totalDuration > 0 && (
-            <Badge variant="outline" className="gap-1">
-              <Clock className="h-3 w-3" />
-              {formatDuration(totalDuration)}
-            </Badge>
-          )}
+          <Badge variant="secondary">{parsed.videos.length} 个视频</Badge>
+          {parsed.query && <Badge variant="outline">{parsed.query}</Badge>}
         </CardTitle>
+        {parsed.searchSources.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {parsed.searchSources.map((source) => (
+              <Badge key={source} variant="outline" className="gap-1 text-xs">
+                <Search className="h-3 w-3" />
+                {formatSearchSource(source)}
+              </Badge>
+            ))}
+          </div>
+        )}
       </CardHeader>
-      <CardContent className="space-y-4">
-        {parsed.style && (
-          <div className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
-            <Palette className="h-4 w-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">统一风格：</span>
-            <span className="text-sm font-medium">{parsed.style}</span>
+      <CardContent className="space-y-3">
+        {parsed.videos.length === 0 ? (
+          <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+            暂未检索到可用视频结果
           </div>
+        ) : (
+          parsed.videos.map((video) => (
+            <VideoCard key={video.id} video={video} onPlay={() => handlePlay(video)} />
+          ))
         )}
+      </CardContent>
 
-        {parsed.coverImageUrl && (
-          <div className="relative overflow-hidden rounded-lg border">
-            <img
-              src={parsed.coverImageUrl}
-              alt="视频封面"
-              className="w-full object-cover"
-              style={{ maxHeight: '300px' }}
-            />
-          </div>
-        )}
-
-        {hasScenes && (
+      <Dialog open={playerOpen} onOpenChange={setPlayerOpen}>
+        <DialogContent className="max-w-5xl">
+          <DialogHeader>
+            <DialogTitle>{selectedVideo?.title}</DialogTitle>
+          </DialogHeader>
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium text-muted-foreground">分镜脚本（每片段10秒）</h3>
-              <div className="flex gap-2">
-                <Button variant="ghost" size="sm" onClick={expandAll}>
-                  全部展开
-                </Button>
-                <Button variant="ghost" size="sm" onClick={collapseAll}>
-                  全部收起
-                </Button>
-              </div>
+            <div className="aspect-video w-full overflow-hidden rounded-lg border bg-muted">
+              {selectedVideo?.embedUrl ? (
+                <iframe
+                  src={selectedVideo.embedUrl}
+                  title={selectedVideo.title}
+                  className="h-full w-full"
+                  allow="autoplay; fullscreen"
+                  allowFullScreen
+                  sandbox="allow-scripts allow-same-origin allow-popups allow-presentation"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+                  <p className="text-sm text-muted-foreground">该视频暂不支持内嵌播放</p>
+                  {selectedVideo?.url && (
+                    <Button asChild variant="outline">
+                      <a href={selectedVideo.url} target="_blank" rel="noreferrer">
+                        <ExternalLink className="mr-1 h-4 w-4" />
+                        在网站中打开
+                      </a>
+                    </Button>
+                  )}
+                </div>
+              )}
             </div>
+            {selectedVideo?.description && (
+              <p className="text-sm text-muted-foreground">{selectedVideo.description}</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+}
 
-            <div className="relative">
-              <div className="mb-3 flex h-3 w-full overflow-hidden rounded-full bg-muted">
-                {parsed.scenes.map((scene, index) => {
-                  const widthPercent = (scene.duration / totalDuration) * 100;
-                  const colors = [
-                    'bg-blue-500',
-                    'bg-cyan-500',
-                    'bg-teal-500',
-                    'bg-emerald-500',
-                    'bg-amber-500',
-                    'bg-orange-500',
-                  ];
-                  return (
-                    <div
-                      key={index}
-                      className={`${colors[index % colors.length]} transition-all hover:opacity-80`}
-                      style={{ width: `${widthPercent}%` }}
-                      title={`片段${index + 1}: ${scene.title || formatDuration(scene.duration)}`}
-                    />
-                  );
-                })}
-              </div>
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>0:00</span>
-                <span>0:10</span>
-                <span>0:20</span>
-                <span>0:30</span>
-                <span>0:40</span>
-                <span>0:50</span>
-                <span>1:00</span>
-              </div>
-            </div>
+function VideoCard({ video, onPlay }: { video: VideoSource; onPlay: () => void }) {
+  const relevance = formatRelevance(video.relevanceScore);
 
-            <div className="relative">
-              <div className="absolute left-4 top-0 bottom-0 w-px bg-border" />
-              <div className="space-y-3">
-                {parsed.scenes.map((scene, index) => {
-                  const isExpanded = expandedScenes.has(index);
-                  const startTime = sceneTimeRanges[index].start;
-                  const endTime = sceneTimeRanges[index].end;
-                  return (
-                    <div key={index} className="relative pl-10">
-                      <div className="absolute left-2.5 top-3 h-3 w-3 rounded-full border-2 border-primary bg-background" />
-                      <Card size="sm">
-                        <CardHeader
-                          className="cursor-pointer"
-                          onClick={() => toggleScene(index)}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-xs">
-                                片段 {index + 1}
-                              </Badge>
-                              <span className="text-sm font-medium">
-                                {scene.title || `片段 ${index + 1}`}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="secondary" className="gap-1 text-xs">
-                                <Clock className="h-2.5 w-2.5" />
-                                {formatDuration(startTime)}-{formatDuration(endTime)}
-                              </Badge>
-                              {isExpanded ? (
-                                <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                              ) : (
-                                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                              )}
-                            </div>
-                          </div>
-                        </CardHeader>
-                        {isExpanded && (
-                          <CardContent className="space-y-2 pt-0">
-                            {scene.description && (
-                              <div>
-                                <p className="text-xs font-medium text-muted-foreground">画面描述</p>
-                                <p className="text-sm">{scene.description}</p>
-                              </div>
-                            )}
-                            {scene.narration && (
-                              <div className="rounded-lg bg-muted/50 p-3">
-                                <p className="text-xs font-medium text-muted-foreground">旁白</p>
-                                <p className="text-sm italic">{scene.narration}</p>
-                              </div>
-                            )}
-                            {(scene.style || parsed.style) && (
-                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                <Palette className="h-3 w-3" />
-                                <span>{scene.style || parsed.style}</span>
-                              </div>
-                            )}
-                          </CardContent>
-                        )}
-                      </Card>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+  return (
+    <button
+      type="button"
+      className="flex w-full gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-muted/50"
+      onClick={onPlay}
+    >
+      <div className="relative h-24 w-40 flex-shrink-0 overflow-hidden rounded bg-muted">
+        {video.coverImageUrl ? (
+          <img src={video.coverImageUrl} alt={video.title} className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full items-center justify-center">
+            <Play className="h-8 w-8 text-muted-foreground/50" />
           </div>
         )}
+        {video.duration && (
+          <span className="absolute bottom-1 right-1 rounded bg-black/75 px-1.5 py-0.5 text-xs text-white">
+            {video.duration}
+          </span>
+        )}
+      </div>
 
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <FileText className="h-4 w-4 text-muted-foreground" />
-            <h3 className="text-sm font-medium text-muted-foreground">完整脚本</h3>
-          </div>
-          <div
-            className={`prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap rounded-lg border bg-muted/30 p-4 ${
-              !showFullScript && !hasScenes ? 'line-clamp-[20]' : !showFullScript ? 'line-clamp-6' : ''
-            }`}
-          >
-            {parsed.script}
-          </div>
-          {!showFullScript && (
-            <Button variant="ghost" size="sm" onClick={() => setShowFullScript(true)}>
-              展开完整脚本
-            </Button>
+      <div className="min-w-0 flex-1 space-y-2">
+        <div className="flex flex-wrap items-start gap-2">
+          <h4 className="line-clamp-2 flex-1 text-sm font-medium">{video.title}</h4>
+          <Badge variant="outline" className="text-xs">
+            {platformLabel(video.platform)}
+          </Badge>
+          {relevance && <Badge variant="secondary" className="text-xs">{relevance}</Badge>}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+          {video.author && (
+            <span className="flex items-center gap-1">
+              <User className="h-3 w-3" />
+              {video.author}
+            </span>
           )}
-          {showFullScript && (
-            <Button variant="ghost" size="sm" onClick={() => setShowFullScript(false)}>
-              收起脚本
-            </Button>
+          {video.viewCount !== undefined && (
+            <span className="flex items-center gap-1">
+              <Eye className="h-3 w-3" />
+              {video.viewCount.toLocaleString()}
+            </span>
+          )}
+          {video.duration && (
+            <span className="flex items-center gap-1">
+              <Clock className="h-3 w-3" />
+              {video.duration}
+            </span>
           )}
         </div>
-      </CardContent>
-    </Card>
+
+        {video.description && (
+          <p className="line-clamp-2 text-xs text-muted-foreground">{video.description}</p>
+        )}
+
+        {video.matchedKeywords && video.matchedKeywords.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {video.matchedKeywords.map((keyword) => (
+              <Badge key={keyword} variant="secondary" className="text-xs">
+                {keyword}
+              </Badge>
+            ))}
+          </div>
+        )}
+      </div>
+    </button>
   );
 }

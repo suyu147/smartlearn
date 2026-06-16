@@ -67,6 +67,23 @@ async function generateDefaultResource(
   profile?: ProfileDimensions | null,
   aiConfig?: AIConfig,
 ): Promise<{ content: string; title: string; metadata?: Resource['metadata'] }> {
+  const metadata: Resource['metadata'] = {
+    knowledgePoints,
+    profileUsed: !!profile,
+  };
+
+  if (type === 'video') {
+    const { searchVideos } = await import('@/lib/video/search-aggregator');
+    const videoSearchResult = await searchVideos(knowledgePoints);
+    metadata.videoData = videoSearchResult;
+
+    return {
+      content: JSON.stringify(videoSearchResult),
+      title: `${knowledgePoints.join(', ')} - 推荐视频`,
+      metadata,
+    };
+  }
+
   const prompt = resourcePrompts[type as keyof typeof resourcePrompts];
   const content = await runTextGeneration(
     prompt,
@@ -74,16 +91,6 @@ async function generateDefaultResource(
     aiConfig,
     `resource-${type}`,
   );
-
-  const metadata: Resource['metadata'] = {
-    knowledgePoints,
-    profileUsed: !!profile,
-  };
-
-  if (type === 'video') {
-    const { parseVideoScript } = await import('@/lib/video/generate');
-    metadata.videoData = parseVideoScript(content);
-  }
 
   return {
     content,

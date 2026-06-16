@@ -138,6 +138,8 @@ export default function WorkspacePage() {
   const hasAutoPlanned = useRef(false);
   const isGeneratingRef = useRef(false);
   const generatingNodeSetRef = useRef<Set<string>>(new Set());
+  const generationVersionByNodeRef = useRef<Map<string, number>>(new Map());
+  const activeAbortControllersRef = useRef<Map<string, AbortController>>(new Map());
   const selectedResourceOpenedAtRef = useRef<number | null>(null);
   const lastSelectedResourceRef = useRef<Resource | null>(null);
 
@@ -161,7 +163,7 @@ export default function WorkspacePage() {
         const baseDecision = decideNodeResourcePlan({
           node: buildNodeDecisionContext(node, index, path.nodes.length),
           profile: profile.dimensions,
-          existingResources: node.resources,
+          existingResources: override ? [] : node.resources,
           priorFeedback,
           constraints: {
             allowLLM: false,
@@ -176,11 +178,7 @@ export default function WorkspacePage() {
           },
         });
 
-        if (!existing) {
-          return [node.id, baseDecision];
-        }
-
-        if (!override) {
+        if (existing) {
           return [node.id, existing];
         }
 
@@ -320,7 +318,7 @@ export default function WorkspacePage() {
   }, [removeResource]);
 
   const parseResourceSSE = useCallback(
-    async (response: Response, nodeId: string) => {
+    async (response: Response, nodeId: string, generationVersion: number) => {
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
@@ -329,12 +327,22 @@ export default function WorkspacePage() {
         const { done, value } = await reader.read();
         if (done) break;
 
+        if (generationVersionByNodeRef.current.get(nodeId) !== generationVersion) {
+          await reader.cancel().catch(() => undefined);
+          break;
+        }
+
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
 
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue;
+
+          if (generationVersionByNodeRef.current.get(nodeId) !== generationVersion) {
+            await reader.cancel().catch(() => undefined);
+            return;
+          }
 
           try {
             const data = JSON.parse(line.slice(6));
@@ -351,7 +359,7 @@ export default function WorkspacePage() {
   );
 
   const parsePPTSSE = useCallback(
-    async (response: Response, nodeId: string) => {
+    async (response: Response, nodeId: string, generationVersion: number) => {
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
@@ -360,12 +368,22 @@ export default function WorkspacePage() {
         const { done, value } = await reader.read();
         if (done) break;
 
+        if (generationVersionByNodeRef.current.get(nodeId) !== generationVersion) {
+          await reader.cancel().catch(() => undefined);
+          break;
+        }
+
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
 
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue;
+
+          if (generationVersionByNodeRef.current.get(nodeId) !== generationVersion) {
+            await reader.cancel().catch(() => undefined);
+            return;
+          }
 
           try {
             const data = JSON.parse(line.slice(6));
@@ -395,16 +413,26 @@ export default function WorkspacePage() {
   );
 
   const generateNodeResources = useCallback(
-    async (node: LearningPathNode) => {
+    async (node: LearningPathNode, forcedTypes?: ResourceType[]) => {
       if (!profile || !currentSessionId) return;
 
       generatingNodeSetRef.current.add(node.id);
       setGeneratingNodes((prev) => new Set(prev).add(node.id));
 
       try {
+        const nextGenerationVersion = (generationVersionByNodeRef.current.get(node.id) ?? 0) + 1;
+        generationVersionByNodeRef.current.set(node.id, nextGenerationVersion);
+
+        activeAbortControllersRef.current.get(node.id)?.abort();
+        const abortController = new AbortController();
+        activeAbortControllersRef.current.set(node.id, abortController);
+
         const nodeIndex = path?.nodes.findIndex((item) => item.id === node.id) ?? -1;
-        const sessionOverrides = overridesBySession[currentSessionId] ?? {};
-        const override = sessionOverrides[node.id];
+        const sessionOverrides = useResourceDecisionsStore.getState().overridesBySession[currentSessionId] ?? {};
+        const storedOverride = sessionOverrides[node.id];
+        const effectiveSelectedTypes = forcedTypes && forcedTypes.length > 0
+          ? forcedTypes
+          : storedOverride?.selectedTypes;
         const decisionInput = {
           node: buildNodeDecisionContext(node, Math.max(nodeIndex, 0), path?.nodes.length ?? 1),
           profile: profile.dimensions,
@@ -412,40 +440,51 @@ export default function WorkspacePage() {
           constraints: {
             allowLLM: true,
             allowPPT: true,
-            latencyBudgetMs: 1200,
-            llmTimeoutMs: 2500,
-            forceInclude: override?.selectedTypes,
-            forceExclude: override
-              ? ALL_RESOURCE_TYPES.filter((type) => !override.selectedTypes.includes(type))
+            latencyBudgetMs: 2200,
+            llmTimeoutMs: 8000,
+            forceInclude: effectiveSelectedTypes,
+            forceExclude: effectiveSelectedTypes
+              ? ALL_RESOURCE_TYPES.filter((type) => !effectiveSelectedTypes.includes(type))
               : undefined,
           },
         };
 
         let decision: ResourceDecisionResultV2;
-        try {
-          const response = await fetch('/api/resource-decision', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              decisionInput,
-              aiConfig: { providerId, modelId, apiKey, baseUrl },
-            }),
-          });
-
-          if (!response.ok) {
-            throw new Error(`resource decision failed: ${response.status}`);
-          }
-
-          decision = (await response.json()) as ResourceDecisionResultV2;
-        } catch (error) {
-          console.warn('Enhanced resource decision failed, fallback to local rules', error);
+        if (effectiveSelectedTypes) {
           decision = decideNodeResourcePlan({
             ...decisionInput,
+            existingResources: [],
             constraints: {
               ...decisionInput.constraints,
               allowLLM: false,
             },
           });
+        } else {
+          try {
+            const response = await fetch('/api/resource-decision', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                decisionInput,
+                aiConfig: { providerId, modelId, apiKey, baseUrl },
+              }),
+            });
+
+            if (!response.ok) {
+              throw new Error(`resource decision failed: ${response.status}`);
+            }
+
+            decision = (await response.json()) as ResourceDecisionResultV2;
+          } catch (error) {
+            console.warn('Enhanced resource decision failed, fallback to local rules', error);
+            decision = decideNodeResourcePlan({
+              ...decisionInput,
+              constraints: {
+                ...decisionInput.constraints,
+                allowLLM: false,
+              },
+            });
+          }
         }
 
         addDecisionLog({
@@ -468,6 +507,7 @@ export default function WorkspacePage() {
             profile: profile.dimensions,
             aiConfig: { providerId, modelId, apiKey, baseUrl },
           }),
+          signal: abortController.signal,
         });
 
         const pptPromise = decision.execution.shouldGeneratePPT
@@ -481,17 +521,19 @@ export default function WorkspacePage() {
                 enableImageGeneration: generatePptImages,
                 includeInteractive: true,
               }),
+              signal: abortController.signal,
             })
           : Promise.resolve(null);
 
         const [resourcesResponse, pptResponse] = await Promise.all([resourcesPromise, pptPromise]);
         await Promise.all([
-          parseResourceSSE(resourcesResponse, node.id),
-          pptResponse ? parsePPTSSE(pptResponse, node.id) : Promise.resolve(),
+          parseResourceSSE(resourcesResponse, node.id, nextGenerationVersion),
+          pptResponse ? parsePPTSSE(pptResponse, node.id, nextGenerationVersion) : Promise.resolve(),
         ]);
       } catch (error) {
         console.error(`Failed to generate resources for node ${node.id}:`, error);
       } finally {
+        activeAbortControllersRef.current.delete(node.id);
         generatingNodeSetRef.current.delete(node.id);
         setGeneratingNodes((prev) => {
           const next = new Set(prev);
@@ -613,7 +655,7 @@ export default function WorkspacePage() {
 
       setNodeOverride(currentSessionId, nodeId, normalizedTypes);
       removeNodeResources(nodeId);
-      await generateNodeResources({ ...node, resources: [] });
+      await generateNodeResources({ ...node, resources: [] }, normalizedTypes);
     },
     [clearNodeOverride, currentSessionId, generateNodeResources, path, removeNodeResources, setNodeOverride],
   );

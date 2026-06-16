@@ -22,16 +22,24 @@ interface LLMDecisionPayload {
   }>;
 }
 
+function formatConstraintTypes(types?: ResourceType[]): string {
+  return types && types.length > 0 ? types.join('、') : '无';
+}
+
 function buildPrompt(input: DecisionInputV2, basePlan: ResourceDecisionResultV2) {
   const preferredFormats = input.profile?.interests?.preferredFormats ?? [];
   const knowledgeLevel = input.profile?.knowledgeBase.level ?? 'beginner';
   const existingTypes = input.existingResources?.map((resource) => resource.type) ?? [];
   const allowedTypes = ['document', 'mindmap', 'quiz', 'video', 'code', 'reading', 'ppt'];
+  const forceInclude = input.constraints?.forceInclude ?? [];
+  const forceExclude = input.constraints?.forceExclude ?? [];
 
   return [
     '你是学习资源决策助手，只负责决定某个学习节点应该生成哪些资源，不要生成资源内容。',
     '请只输出 JSON，对每个资源类型给出 generate 或 skip，并给出简短 reason。',
     '不要输出 markdown，不要解释额外文字。',
+    '必须严格遵守系统约束：forceInclude 中的类型只能是 generate，forceExclude 中的类型只能是 skip。',
+    '如果某个资源类型已经被系统约束固定，就不要改写它的方向，只能补充更具体的原因。',
     '',
     `节点标题: ${input.node.nodeTitle}`,
     `知识点: ${input.node.knowledgePoints.join('、')}`,
@@ -39,6 +47,8 @@ function buildPrompt(input: DecisionInputV2, basePlan: ResourceDecisionResultV2)
     `用户知识水平: ${knowledgeLevel}`,
     `用户偏好格式: ${preferredFormats.join('、') || '无'}`,
     `已存在资源: ${existingTypes.join('、') || '无'}`,
+    `系统强制包含: ${formatConstraintTypes(forceInclude)}`,
+    `系统强制排除: ${formatConstraintTypes(forceExclude)}`,
     `规则层建议生成: ${basePlan.execution.resourceTypes.join('、') || '无'}`,
     `规则层建议 PPT: ${basePlan.execution.shouldGeneratePPT ? '是' : '否'}`,
     `允许的资源类型: ${allowedTypes.join('、')}`,
@@ -54,6 +64,7 @@ function buildPrompt(input: DecisionInputV2, basePlan: ResourceDecisionResultV2)
 }
 
 function mergeLLMDecision(
+  input: DecisionInputV2,
   basePlan: ResourceDecisionResultV2,
   payload: LLMDecisionPayload | null,
 ): ResourceDecisionResultV2 {
@@ -67,6 +78,8 @@ function mergeLLMDecision(
     };
   }
 
+  const forceInclude = new Set(input.constraints?.forceInclude ?? []);
+  const forceExclude = new Set(input.constraints?.forceExclude ?? []);
   const mergedItems = new Map(basePlan.items.map((item) => [item.type, { ...item }]));
 
   for (const item of payload.items) {
@@ -81,7 +94,29 @@ function mergeLLMDecision(
     });
   }
 
-  const orderedItems = basePlan.items.map((item) => mergedItems.get(item.type) ?? item);
+  const orderedItems = basePlan.items.map((item) => {
+    const merged = mergedItems.get(item.type) ?? item;
+
+    if (forceInclude.has(item.type)) {
+      return {
+        ...merged,
+        action: 'generate' as const,
+        reason: merged.reason || item.reason,
+        confidence: 1,
+      };
+    }
+
+    if (forceExclude.has(item.type)) {
+      return {
+        ...merged,
+        action: 'skip' as const,
+        reason: merged.reason || item.reason,
+      };
+    }
+
+    return merged;
+  });
+
   const executionResourceTypes = orderedItems
     .filter((item) => item.type !== 'ppt' && item.action === 'generate')
     .map((item) => item.type);
@@ -139,10 +174,10 @@ export async function POST(request: NextRequest) {
       baseUrl: aiConfig?.baseUrl,
     });
 
-    const requestedBudgetMs = decisionInput.constraints?.latencyBudgetMs ?? 1200;
+    const requestedBudgetMs = decisionInput.constraints?.latencyBudgetMs ?? 2000;
     const requestedTimeoutMs =
-      decisionInput.constraints?.llmTimeoutMs ?? Math.max(requestedBudgetMs * 4, 5000);
-    const timeoutMs = Math.min(Math.max(requestedTimeoutMs, 5000), 15000);
+      decisionInput.constraints?.llmTimeoutMs ?? Math.max(requestedBudgetMs * 4, 8000);
+    const timeoutMs = Math.min(Math.max(requestedTimeoutMs, 8000), 25000);
     const llmStartedAt = Date.now();
     const llmPromise = callLLM(
       {
@@ -164,7 +199,7 @@ export async function POST(request: NextRequest) {
     try {
       const llmResult = await Promise.race([llmPromise, timeoutPromise]);
       const parsed = parseJsonResponse<LLMDecisionPayload>(String(llmResult.text ?? ''));
-      const merged = mergeLLMDecision(basePlan, parsed);
+      const merged = mergeLLMDecision(decisionInput, basePlan, parsed);
 
       return Response.json({
         ...merged,
