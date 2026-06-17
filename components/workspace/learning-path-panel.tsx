@@ -5,10 +5,10 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { PathTimeline } from '@/components/learning-path/path-timeline';
 import { PathProgress } from '@/components/learning-path/path-progress';
-import { useResourcesStore } from '@/lib/store/resources';import type { LearningPath } from '@/lib/types/learning-path';
-import type { Resource } from '@/lib/types/resource';
+import { useResourcesStore } from '@/lib/store/resources';
+import type { LearningPath } from '@/lib/types/learning-path';
+import type { Resource, ResourceType } from '@/lib/types/resource';
 import type { ResourceDecisionResultV2 } from '@/lib/generation/resource-decision';
-import type { ResourceType } from '@/lib/types/resource';
 
 interface Props {
   path: LearningPath | null;

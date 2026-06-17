@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import profileChatPrompt from '@/lib/prompts/profile-chat-prompt.json';
 import resourcePrompts from '@/lib/prompts/resource-prompts.json';
-import pathPlanPrompt from '@/lib/prompts/path-plan-prompt.json';
 import tutorChatPrompt from '@/lib/prompts/tutor-chat-prompt.json';
 import evaluationPrompt from '@/lib/prompts/evaluation-prompt.json';
 
@@ -51,14 +50,6 @@ const defaultAgents: AgentConfig[] = [
     description: '生成可运行的代码示例和实操案例',
     systemPrompt: resourcePrompts.code,
     taskTypes: ['resource_gen'],
-    isDefault: true,
-  },
-  {
-    id: 'path',
-    name: '路径Agent',
-    description: '规划个性化学习路径',
-    systemPrompt: pathPlanPrompt.systemPrompt,
-    taskTypes: ['path_plan'],
     isDefault: true,
   },
   {

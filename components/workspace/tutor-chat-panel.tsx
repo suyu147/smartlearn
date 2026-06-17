@@ -10,6 +10,7 @@ import { useSettingsStore } from '@/lib/store/settings';
 import { useSessionsStore } from '@/lib/store/sessions';
 import { useResourcesStore } from '@/lib/store/resources';
 import { useLearningPathStore } from '@/lib/store/learning-path';
+import { useLearningProfileStore } from '@/lib/store/learning-profile';
 import { RESOURCE_TYPE_LABELS, type Resource } from '@/lib/types/resource';
 
 interface Props {
@@ -59,6 +60,7 @@ export function TutorChatPanel({ selectedResource = null }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { providerId, modelId, apiKey, baseUrl } = useSettingsStore();
   const { path } = useLearningPathStore();
+  const { profile } = useLearningProfileStore();
   const { resources } = useResourcesStore();
   const {
     currentSessionId,
@@ -121,10 +123,16 @@ export function TutorChatPanel({ selectedResource = null }: Props) {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/tutor/chat', {
+      const response = await fetch('/api/learn', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          action: 'tutor_chat',
+          sessionId: currentSessionId,
+          profile: profile?.dimensions,
+          goal: path?.goal ?? '',
+          completedNodes: path?.nodes.filter((node) => node.status === 'completed') ?? [],
+          currentNodeId: path?.nodes.find((node) => node.status === 'in_progress')?.id ?? null,
           message: trimmedInput,
           conversationHistory: history.slice(-10).map(m => ({ role: m.role, content: m.content, attachedResourceIds: m.attachedResourceIds ?? [] })),
           attachedResources: attachedResourcesPayload,
@@ -133,7 +141,11 @@ export function TutorChatPanel({ selectedResource = null }: Props) {
         }),
       });
 
-      const reader = response.body?.getReader();
+      if (!response.ok || !response.body) {
+        throw new Error('Tutor chat request failed');
+      }
+
+      const reader = response.body.getReader();
       const decoder = new TextDecoder();
       const assistantId = crypto.randomUUID();
       let assistantContent = '';

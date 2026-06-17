@@ -32,6 +32,7 @@ import { useSessionsStore } from '@/lib/store/sessions';
 import { useLearningPathStore } from '@/lib/store/learning-path';
 import { useResourcesStore } from '@/lib/store/resources';
 import { useLearningProfileStore } from '@/lib/store/learning-profile';
+import { useResourceDecisionsStore } from '@/lib/store/resource-decisions';
 
 interface Props {
   profile: LearningProfile | null;
@@ -41,9 +42,10 @@ export function WorkspaceHeader({ profile }: Props) {
   const router = useRouter();
   const completeness = calculateProfileCompleteness(profile?.dimensions ?? null);
   const { sessions, currentSessionId, switchSession, deleteSession, updateSessionStatus } = useSessionsStore();
-  const { loadPathForSession, deleteSessionData: deletePathData } = useLearningPathStore();
-  const { loadResourcesForSession, deleteSessionData: deleteResourceData } = useResourcesStore();
-  const { clearArchivedProfile, restoreArchivedProfile } = useLearningProfileStore();
+  const { loadPathForSession, deleteSessionData: deletePathData, reset: resetPath } = useLearningPathStore();
+  const { loadResourcesForSession, deleteSessionData: deleteResourceData, reset: resetResources } = useResourcesStore();
+  const { clearArchivedProfile, restoreArchivedProfile, archiveCurrentProfile, reset: resetProfile, setChatOpen } = useLearningProfileStore();
+  const clearSessionDecisions = useResourceDecisionsStore((state) => state.clearSessionLogs);
 
   const [historyOpen, setHistoryOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
@@ -62,6 +64,20 @@ export function WorkspaceHeader({ profile }: Props) {
   }
 
   function handleNewChat() {
+    const currentSession = sessions.find((session) => session.id === currentSessionId);
+    if (profile && currentSession?.profileId === profile.id) {
+      archiveCurrentProfile();
+    }
+    if (currentSessionId) {
+      deletePathData(currentSessionId);
+      deleteResourceData(currentSessionId);
+      clearSessionDecisions(currentSessionId);
+    } else {
+      resetPath();
+      resetResources();
+    }
+    resetProfile();
+    setChatOpen(true);
     router.push('/profile?new=true');
   }
 

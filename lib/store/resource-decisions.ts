@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { ResourceDecisionResultV2 } from '@/lib/generation/resource-decision';
+import type { PriorNodeFeedback, ResourceDecisionResultV2 } from '@/lib/generation/resource-decision';
 import type { ResourceType } from '@/lib/types/resource';
 
 export interface ResourceDecisionLog {
@@ -38,6 +38,9 @@ interface ResourceDecisionsState {
   recordResourceView: (sessionId: string, nodeId: string, type: ResourceType, dwellMs: number) => void;
   recordQuizResult: (sessionId: string, nodeId: string, score: number, completed: boolean) => void;
   getLogsForSession: (sessionId: string) => ResourceDecisionLog[];
+  getDecisionLogsForSession: (sessionId: string) => ResourceDecisionLog[];
+  getOverrideForSession: (sessionId: string) => Record<string, ResourceType[]>;
+  getFeedbackForSession: (sessionId: string) => PriorNodeFeedback[];
   clearSessionLogs: (sessionId: string) => void;
 }
 
@@ -192,6 +195,29 @@ export const useResourceDecisionsStore = create<ResourceDecisionsState>()(
       },
 
       getLogsForSession: (sessionId) => get().logsBySession[sessionId] ?? [],
+
+      getDecisionLogsForSession: (sessionId) => get().logsBySession[sessionId] ?? [],
+
+      getOverrideForSession: (sessionId) => {
+        const overrides = get().overridesBySession[sessionId] ?? {};
+        return Object.fromEntries(
+          Object.entries(overrides).map(([nodeId, override]) => [nodeId, override.selectedTypes]),
+        );
+      },
+
+      getFeedbackForSession: (sessionId) => {
+        const feedback = get().feedbackBySession[sessionId] ?? [];
+        return feedback.map((item) => ({
+          nodeId: item.nodeId,
+          acceptedTypes: item.acceptedTypes,
+          rejectedTypes: item.rejectedTypes,
+          clickedTypes: item.clickedTypes,
+          viewedTypes: item.viewedTypes,
+          dwellMsByType: item.dwellMsByType,
+          quizCompleted: item.quizCompleted,
+          quizScore: item.quizScore,
+        }));
+      },
 
       clearSessionLogs: (sessionId) => {
         set((state) => {

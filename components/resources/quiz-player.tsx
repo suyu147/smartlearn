@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { parseJsonResponse } from '@/lib/generation/json-repair';
 import { useSettingsStore } from '@/lib/store/settings';
 import { useLearningProfileStore } from '@/lib/store/learning-profile';
+import { useLearningPathStore } from '@/lib/store/learning-path';
+import { useSessionsStore } from '@/lib/store/sessions';
 import type { Quiz } from '@/lib/types/resource';
 import type { ProfileDimensions } from '@/lib/types/profile';
 
@@ -61,6 +63,8 @@ export function QuizPlayer({
 
   const { providerId, modelId, apiKey, baseUrl } = useSettingsStore();
   const { profile, updateDimensions } = useLearningProfileStore();
+  const { path } = useLearningPathStore();
+  const { currentSessionId } = useSessionsStore();
 
   let quizzes: Quiz[] = [];
   try {
@@ -100,12 +104,17 @@ export function QuizPlayer({
     }));
 
     try {
-      const response = await fetch('/api/evaluate', {
+      const response = await fetch('/api/learn', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          quizResults,
+          action: 'quiz_result',
+          sessionId: currentSessionId,
           profile: profile?.dimensions ?? null,
+          goal: path?.goal ?? '',
+          completedNodes: path?.nodes.filter((node) => node.status === 'completed') ?? [],
+          currentNodeId: path?.nodes.find((node) => node.status === 'in_progress')?.id ?? null,
+          quizResults,
           aiConfig: { providerId, modelId, apiKey, baseUrl },
         }),
       });
@@ -165,7 +174,7 @@ export function QuizPlayer({
     } catch {
       setEvalStatus('idle');
     }
-  }, [results, quizzes, selectedAnswers, profile, providerId, modelId, apiKey, baseUrl, updateDimensions]);
+  }, [results, quizzes, selectedAnswers, profile, path, currentSessionId, providerId, modelId, apiKey, baseUrl, updateDimensions]);
 
   if (quizzes.length === 0) {
     return (

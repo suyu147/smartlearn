@@ -24,7 +24,7 @@ interface SessionsState {
   tutorMessagesBySession: Record<string, TutorChatMessage[]>;
 
   createSession: (profileId: string, goal: string) => LearningSession;
-  switchSession: (sessionId: string) => void;
+  switchSession: (sessionId: string | null) => void;
   updateSessionTitle: (sessionId: string, title: string) => void;
   deleteSession: (sessionId: string) => void;
   updateSessionStatus: (sessionId: string, status: LearningSession['status']) => void;

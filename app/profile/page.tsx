@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
+import { useSessionsStore } from '@/lib/store/sessions';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ProfileChat } from '@/components/profile/profile-chat';
@@ -49,13 +50,20 @@ function ProfilePageContent() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null); // 单个删除目标ID
   const [deleteAllConfirm, setDeleteAllConfirm] = useState(false);
+  const switchSession = useSessionsStore((state) => state.switchSession);
 
   // 画像已构建完成 → 自动跳转工作台（新建对话模式除外）
   useEffect(() => {
-    if (!isNewChat && isProfileComplete(profile?.dimensions ?? null)) {
+    if (isNewChat) {
+      reset();
+      setChatOpen(true);
+      switchSession(null);
+      return;
+    }
+    if (isProfileComplete(profile?.dimensions ?? null)) {
       router.replace('/workspace');
     }
-  }, [profile?.id, profile?.updatedAt, router, isNewChat]);
+  }, [profile?.id, profile?.updatedAt, router, isNewChat, reset, setChatOpen, switchSession]);
 
   const archivedList = Object.values(archivedProfiles);
 

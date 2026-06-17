@@ -2,7 +2,7 @@ import type { LearningProfile } from './profile';
 import type { Resource } from './resource';
 import type { LearningPath } from './learning-path';
 
-export type AgentTaskType = 'profile_build' | 'resource_gen' | 'path_plan' | 'tutor' | 'evaluate';
+export type AgentTaskType = 'profile_build' | 'resource_gen' | 'tutor' | 'evaluate';
 
 export interface AgentInfo {
   id: string;
@@ -67,12 +67,6 @@ export const AGENTS: Record<string, AgentInfo> = {
     name: '代码Agent',
     description: '生成可运行的代码示例和实操案例',
     color: '#10b981',
-  },
-  path: {
-    id: 'path',
-    name: '路径Agent',
-    description: '规划个性化学习路径',
-    color: '#f97316',
   },
   tutor: {
     id: 'tutor',
