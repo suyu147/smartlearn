@@ -30,6 +30,7 @@ export const LearningState = Annotation.Root({
   }),
   evaluationResult: Annotation<EvaluationResultPayload | null>(),
   evaluationScore: Annotation<number | null>(),
+  evaluationFeedback: Annotation<{ weakPoints: string[]; strongPoints: string[]; suggestedFocus: string[] } | null>(),
   updatedProfile: Annotation<ProfileDimensions | null>(),
   pptScenes: Annotation<Scene[] | null>(),
   phase: Annotation<string>(),

@@ -60,6 +60,7 @@ enum ResourceType {
   video
   code
   reading
+  ppt
 }
 
 enum ResourceStatus {

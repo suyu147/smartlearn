@@ -29,7 +29,12 @@ export async function POST(request: NextRequest) {
           conversationHistory: body.conversationHistory ?? [],
           attachedResources: body.attachedResources ?? [],
           currentNodeTitle: body.currentNodeTitle ?? null,
-          aiConfig: body.aiConfig,
+          aiConfig: {
+            providerId: body.aiConfig?.providerId || process.env.AI_PROVIDER || undefined,
+            modelId: body.aiConfig?.modelId || process.env.AI_MODEL_ID || process.env.AI_MODEL || undefined,
+            apiKey: process.env.AI_API_KEY || body.aiConfig?.apiKey,
+            baseUrl: process.env.AI_BASE_URL || body.aiConfig?.baseUrl,
+          },
           resourceFeedback: body.resourceFeedback ?? [],
           nodeDecisionOverrides: body.nodeDecisionOverrides ?? {},
           currentNode: null,

@@ -11,12 +11,11 @@ import {
   Play,
   Code,
   BookOpen,
-  Eye,
   Trash2,
   Presentation,
 } from 'lucide-react';
 import { useResourcesStore } from '@/lib/store/resources';
-import { RESOURCE_TYPE_LABELS, RESOURCE_TYPE_ICONS, type ResourceType } from '@/lib/types/resource';
+import { RESOURCE_TYPE_LABELS, RESOURCE_TYPE_ICONS } from '@/lib/types/resource';
 import { DocumentViewer } from './document-viewer';
 import { MindmapViewer } from './mindmap-viewer';
 import { QuizPlayer } from './quiz-player';

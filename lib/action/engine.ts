@@ -14,7 +14,6 @@ import { createStageAPI } from '@/lib/api/stage-api';
 import { useCanvasStore } from '@/lib/store/canvas';
 import { useWhiteboardHistoryStore } from '@/lib/store/whiteboard-history';
 import { useMediaGenerationStore, isMediaPlaceholder } from '@/lib/store/media-generation';
-import { getClientTranslation } from '@/lib/i18n';
 import type { AudioPlayer } from '@/lib/utils/audio-player';
 import type {
   Action,
@@ -30,6 +29,7 @@ import type {
   WbDeleteAction,
   WbDrawLineAction,
 } from '@/lib/types/action';
+import { normalizeActionType } from '@/lib/types/action';
 import katex from 'katex';
 import { createLogger } from '@/lib/logger';
 
@@ -80,44 +80,49 @@ export class ActionEngine {
    * Synchronous actions return a Promise that resolves when the action is complete.
    */
   async execute(action: Action): Promise<void> {
+    // Normalize action type: hyphen forms (wb-draw-text) → underscore forms (wb_draw_text)
+    // This ensures LLM outputs with either format are handled correctly.
+    const normalizedType = normalizeActionType(action.type);
+    const normalizedAction = { ...action, type: normalizedType } as Action;
+
     // Auto-open whiteboard if a draw/clear/delete action is attempted while it's closed
-    if (action.type.startsWith('wb_') && action.type !== 'wb_open' && action.type !== 'wb_close') {
+    if (normalizedType.startsWith('wb_') && normalizedType !== 'wb_open' && normalizedType !== 'wb_close') {
       await this.ensureWhiteboardOpen();
     }
 
-    switch (action.type) {
+    switch (normalizedType) {
       // Fire-and-forget
       case 'spotlight':
-        this.executeSpotlight(action);
+        this.executeSpotlight(normalizedAction as SpotlightAction);
         return;
       case 'laser':
-        this.executeLaser(action);
+        this.executeLaser(normalizedAction as LaserAction);
         return;
       // Synchronous — Video
       case 'play_video':
-        return this.executePlayVideo(action as PlayVideoAction);
+        return this.executePlayVideo(normalizedAction as PlayVideoAction);
 
       // Synchronous
       case 'speech':
-        return this.executeSpeech(action);
+        return this.executeSpeech(normalizedAction as SpeechAction);
       case 'wb_open':
         return this.executeWbOpen();
       case 'wb_draw_text':
-        return this.executeWbDrawText(action);
+        return this.executeWbDrawText(normalizedAction as WbDrawTextAction);
       case 'wb_draw_shape':
-        return this.executeWbDrawShape(action);
+        return this.executeWbDrawShape(normalizedAction as WbDrawShapeAction);
       case 'wb_draw_chart':
-        return this.executeWbDrawChart(action);
+        return this.executeWbDrawChart(normalizedAction as WbDrawChartAction);
       case 'wb_draw_latex':
-        return this.executeWbDrawLatex(action);
+        return this.executeWbDrawLatex(normalizedAction as WbDrawLatexAction);
       case 'wb_draw_table':
-        return this.executeWbDrawTable(action);
+        return this.executeWbDrawTable(normalizedAction as WbDrawTableAction);
       case 'wb_draw_line':
-        return this.executeWbDrawLine(action as WbDrawLineAction);
+        return this.executeWbDrawLine(normalizedAction as WbDrawLineAction);
       case 'wb_clear':
         return this.executeWbClear();
       case 'wb_delete':
-        return this.executeWbDelete(action as WbDeleteAction);
+        return this.executeWbDelete(normalizedAction as WbDeleteAction);
       case 'wb_close':
         return this.executeWbClose();
       case 'discussion':
@@ -312,8 +317,7 @@ export class ActionEngine {
         rotate: 0,
         defaultFontName: 'Microsoft YaHei',
         defaultColor: action.color ?? '#333333',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any,
+      },
       wb.data.id,
     );
 
@@ -338,8 +342,7 @@ export class ActionEngine {
         rotate: 0,
         fill: action.fillColor ?? '#5b9bd5',
         fixedRatio: false,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any,
+      },
       wb.data.id,
     );
 
@@ -363,8 +366,7 @@ export class ActionEngine {
         chartType: action.chartType,
         data: action.data,
         themeColors: action.themeColors ?? ['#5b9bd5', '#ed7d31', '#a5a5a5', '#ffc000', '#4472c4'],
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any,
+      },
       wb.data.id,
     );
 
@@ -395,8 +397,7 @@ export class ActionEngine {
           html,
           color: action.color ?? '#000000',
           fixedRatio: true,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } as any,
+        },
         wb.data.id,
       );
     } catch (err) {
@@ -455,8 +456,7 @@ export class ActionEngine {
               colFooter: false,
             }
           : undefined,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any,
+      },
       wb.data.id,
     );
 
@@ -487,8 +487,7 @@ export class ActionEngine {
         style: action.style ?? 'solid',
         color: action.color ?? '#333333',
         points: action.points ?? ['', ''],
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      } as any,
+      },
       wb.data.id,
     );
 

@@ -10,7 +10,15 @@ export interface SparkConfig {
 
 export function generateSparkAuthUrl(apiKey: string, apiSecret: string, modelId: string): string {
   const host = 'spark-api.xf-yun.com';
-  const path = '/v1/chat';
+
+  const modelPathMap: Record<string, string> = {
+    'lite': '/v1/chat',
+    'generalv3': '/v3.1/chat',
+    'pro-128k': '/pro-128k/chat',
+    '4.0Ultra': '/v4.0/chat',
+  };
+
+  const path = modelPathMap[modelId] ?? '/v1/chat';
   const now = new Date().toUTCString();
 
   const signatureOrigin = `host: ${host}\ndate: ${now}\nGET ${path} HTTP/1.1`;
@@ -20,13 +28,6 @@ export function generateSparkAuthUrl(apiKey: string, apiSecret: string, modelId:
   ).toString('base64');
 
   const url = `wss://${host}${path}?authorization=${authorization}&date=${encodeURIComponent(now)}&host=${host}`;
-
-  const modelPathMap: Record<string, string> = {
-    'lite': '/v1/chat',
-    'generalv3': '/v3.1/chat',
-    'pro-128k': '/pro-128k/chat',
-    '4.0Ultra': '/v4.0/chat',
-  };
 
   return url;
 }

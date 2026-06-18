@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { BookOpen } from 'lucide-react';
+import { BookOpen, RefreshCw, Bot, AlertTriangle } from 'lucide-react';
 import { RESOURCE_TYPE_LABELS, type Resource, type ResourceType } from '@/lib/types/resource';
 import { DocumentViewer } from '@/components/resources/document-viewer';
 import { MindmapViewer } from '@/components/resources/mindmap-viewer';
@@ -10,6 +10,19 @@ import { CodeRunner } from '@/components/resources/code-runner';
 import { VideoPlayer } from '@/components/resources/video-player';
 import { PPTViewer } from './ppt-viewer';
 import { ReadingViewer } from '@/components/resources/reading-viewer';
+
+const AGENT_NAMES: Record<string, string> = {
+  profile: '画像Agent',
+  document: '文档Agent',
+  quiz: '题库Agent',
+  code: '代码Agent',
+  tutor: '辅导Agent',
+  evaluation: '评估Agent',
+  mindmap: '思维导图Agent',
+  video: '视频Agent',
+  ppt: '课件Agent',
+  reading: '拓展阅读Agent',
+};
 
 interface QuizResultPayload {
   score: number;
@@ -65,7 +78,34 @@ export function ResourceViewer({ resource, sessionId, nodeId, onQuizResult, onRe
           {RESOURCE_TYPE_LABELS[resource.type]}
         </span>
         <h2 className="text-lg font-semibold">{resource.title}</h2>
+        {resource.sourceAgent && (
+          <span className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/50 px-2 py-0.5 text-[11px] text-muted-foreground">
+            <Bot className="h-3 w-3" />
+            {AGENT_NAMES[resource.sourceAgent] ?? resource.sourceAgent}
+          </span>
+        )}
+        {resource.status === 'failed' && (
+          <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] text-red-600">
+            <AlertTriangle className="h-3 w-3" />
+            生成失败
+          </span>
+        )}
       </div>
+
+      {resource.status === 'failed' && (
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span className="flex-1">此资源生成失败，内容可能不完整。</span>
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 rounded-md border border-red-300 bg-white px-2.5 py-1 text-xs font-medium text-red-700 transition-colors hover:bg-red-100"
+            title="重新生成（暂未实现）"
+          >
+            <RefreshCw className="h-3 w-3" />
+            重试
+          </button>
+        </div>
+      )}
 
       {resource.type === 'document' && <DocumentViewer content={resource.content} title={resource.title} />}
       {resource.type === 'mindmap' && <MindmapViewer content={resource.content} title={resource.title} />}

@@ -33,7 +33,7 @@ export interface StageAPI {
   scene: SceneAPI;
 }
 
-export function createStageAPI(store: StageStore): StageAPI {
+export function createStageAPI(_store: StageStore): StageAPI {
   return {
     whiteboard: {
       get: () => ({ success: false, data: null }),

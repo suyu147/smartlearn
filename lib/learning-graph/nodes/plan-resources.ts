@@ -50,6 +50,13 @@ export async function planResourcesNode(
   try {
     const priorFeedback = buildFeedback(state);
     const overrideTypes = state.nodeDecisionOverrides[node.id];
+    const evaluationFeedback = state.evaluationFeedback;
+    const boostTypes: ResourceType[] = evaluationFeedback?.weakPoints?.length
+      ? ['quiz', 'code']
+      : [];
+    const suppressTypes: ResourceType[] = evaluationFeedback?.strongPoints?.length
+      ? ['document']
+      : [];
     const decision = applyOverrides(overrideTypes, decideNodeResourcePlan({
       node: buildNodeDecisionContext(node, Math.max(state.completedNodes.length, 0), Math.max(state.completedNodes.length + 1, 1)),
       profile: state.profile,
@@ -60,6 +67,8 @@ export async function planResourcesNode(
         allowPPT: state.learnerSnapshot?.currentStage === 'overview' || state.learnerSnapshot?.currentStage === 'review',
         latencyBudgetMs: 200,
         maxTypes: state.learnerSnapshot?.currentStage === 'practice' ? 3 : 4,
+        boostTypes,
+        suppressTypes,
       },
     }));
 

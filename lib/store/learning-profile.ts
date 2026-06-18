@@ -8,6 +8,7 @@ interface LearningProfileState {
   profile: LearningProfile | null;
   /** 归档的旧画像（key=profileId），用于保存聊天记录 */
   archivedProfiles: Record<string, LearningProfile>;
+  profileHistory: Array<{ version: number; dimensions: ProfileDimensions; updatedAt: string }>;
   isChatOpen: boolean;
   isGenerating: boolean;
   setProfile: (profile: LearningProfile | null) => void;
@@ -30,6 +31,7 @@ export const useLearningProfileStore = create<LearningProfileState>()(
     immer((set, get) => ({
       profile: null,
       archivedProfiles: {},
+      profileHistory: [],
       isChatOpen: false,
       isGenerating: false,
 
@@ -40,52 +42,62 @@ export const useLearningProfileStore = create<LearningProfileState>()(
 
       updateDimensions: (dimensions) => {
         console.log('Updating dimensions with:', dimensions);
+
+        // 先通过 get() 读取当前状态，在 set() 外部计算 mergedDimensions
+        const currentState = get();
+        const currentDimensions = currentState.profile?.dimensions ?? { ...DEFAULT_DIMENSIONS };
+
+        const mergedDimensions: ProfileDimensions = {
+          knowledgeBase: {
+            ...currentDimensions.knowledgeBase,
+            ...dimensions.knowledgeBase,
+            subjects: dimensions.knowledgeBase?.subjects ?? currentDimensions.knowledgeBase.subjects,
+          },
+          cognitiveStyle: {
+            ...currentDimensions.cognitiveStyle,
+            ...dimensions.cognitiveStyle,
+          },
+          learningGoals: {
+            ...currentDimensions.learningGoals,
+            ...dimensions.learningGoals,
+            shortTerm: dimensions.learningGoals?.shortTerm ?? currentDimensions.learningGoals.shortTerm,
+          },
+          weakPoints: {
+            ...currentDimensions.weakPoints,
+            ...dimensions.weakPoints,
+            topics: dimensions.weakPoints?.topics ?? currentDimensions.weakPoints.topics,
+            errorPatterns: dimensions.weakPoints?.errorPatterns ?? currentDimensions.weakPoints.errorPatterns,
+          },
+          timePreference: {
+            ...currentDimensions.timePreference,
+            ...dimensions.timePreference,
+          },
+          interests: {
+            ...currentDimensions.interests,
+            ...dimensions.interests,
+            domains: dimensions.interests?.domains ?? currentDimensions.interests.domains,
+            preferredFormats: dimensions.interests?.preferredFormats ?? currentDimensions.interests.preferredFormats,
+          },
+          learningPace: {
+            ...currentDimensions.learningPace,
+            ...dimensions.learningPace,
+          },
+          errorPatterns: {
+            ...currentDimensions.errorPatterns,
+            ...dimensions.errorPatterns,
+            commonMistakes: dimensions.errorPatterns?.commonMistakes ?? currentDimensions.errorPatterns.commonMistakes,
+            difficultAreas: dimensions.errorPatterns?.difficultAreas ?? currentDimensions.errorPatterns.difficultAreas,
+          },
+        };
+
         set((state) => {
-          const currentDimensions = state.profile?.dimensions ?? { ...DEFAULT_DIMENSIONS };
-          
-          // 深度合并 dimensions
-          const mergedDimensions: ProfileDimensions = {
-            knowledgeBase: {
-              ...currentDimensions.knowledgeBase,
-              ...dimensions.knowledgeBase,
-              subjects: dimensions.knowledgeBase?.subjects ?? currentDimensions.knowledgeBase.subjects,
-            },
-            cognitiveStyle: {
-              ...currentDimensions.cognitiveStyle,
-              ...dimensions.cognitiveStyle,
-            },
-            learningGoals: {
-              ...currentDimensions.learningGoals,
-              ...dimensions.learningGoals,
-              shortTerm: dimensions.learningGoals?.shortTerm ?? currentDimensions.learningGoals.shortTerm,
-            },
-            weakPoints: {
-              ...currentDimensions.weakPoints,
-              ...dimensions.weakPoints,
-              topics: dimensions.weakPoints?.topics ?? currentDimensions.weakPoints.topics,
-              errorPatterns: dimensions.weakPoints?.errorPatterns ?? currentDimensions.weakPoints.errorPatterns,
-            },
-            timePreference: {
-              ...currentDimensions.timePreference,
-              ...dimensions.timePreference,
-            },
-            interests: {
-              ...currentDimensions.interests,
-              ...dimensions.interests,
-              domains: dimensions.interests?.domains ?? currentDimensions.interests.domains,
-              preferredFormats: dimensions.interests?.preferredFormats ?? currentDimensions.interests.preferredFormats,
-            },
-            learningPace: {
-              ...currentDimensions.learningPace,
-              ...dimensions.learningPace,
-            },
-            errorPatterns: {
-              ...currentDimensions.errorPatterns,
-              ...dimensions.errorPatterns,
-              commonMistakes: dimensions.errorPatterns?.commonMistakes ?? currentDimensions.errorPatterns.commonMistakes,
-              difficultAreas: dimensions.errorPatterns?.difficultAreas ?? currentDimensions.errorPatterns.difficultAreas,
-            },
-          };
+          if (state.profile) {
+            state.profileHistory.push({
+              version: state.profile.version,
+              dimensions: state.profile.dimensions,
+              updatedAt: state.profile.updatedAt,
+            });
+          }
 
           const newProfile: LearningProfile = {
             id: state.profile?.id ?? crypto.randomUUID(),
@@ -95,10 +107,19 @@ export const useLearningProfileStore = create<LearningProfileState>()(
             dimensions: mergedDimensions,
             conversationHistory: state.profile?.conversationHistory ?? [],
           };
-          
+
           console.log('New profile created:', newProfile);
           return { profile: newProfile };
         });
+
+        // 数据库写入（仅客户端，静默失败不影响本地使用）
+        if (typeof window !== 'undefined') {
+          fetch('/api/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dimensions: mergedDimensions }),
+          }).catch(() => {});
+        }
       },
 
       setChatOpen: (isChatOpen) => set({ isChatOpen }),
@@ -159,8 +180,8 @@ export const useLearningProfileStore = create<LearningProfileState>()(
         });
       },
 
-      reset: () => set({ profile: null, isChatOpen: false, isGenerating: false }),
+      reset: () => set({ profile: null, profileHistory: [], isChatOpen: false, isGenerating: false }),
     })),
-    { name: 'learning-profile-storage', partialize: (state) => ({ profile: state.profile, archivedProfiles: state.archivedProfiles }) },
+    { name: 'learning-profile-storage', partialize: (state) => ({ profile: state.profile, archivedProfiles: state.archivedProfiles, profileHistory: state.profileHistory }) },
   ),
 );

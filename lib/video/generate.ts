@@ -11,7 +11,7 @@ export interface VideoGenerationResult {
   style?: string;
 }
 
-export async function generateVideoCover(prompt: string, apiKey?: string): Promise<string | null> {
+export async function generateVideoCover(_prompt: string, _apiKey?: string): Promise<string | null> {
   return null;
 }
 

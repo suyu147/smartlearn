@@ -37,8 +37,11 @@ function buildPrompt(state: LearningStateType) {
     `学习目标：${state.goal}`,
     `当前画像：${JSON.stringify(state.profile, null, 2)}`,
     `已完成节点：\n${completed}`,
+    state.evaluationFeedback?.weakPoints?.length
+      ? `上轮评估薄弱点：${state.evaluationFeedback.weakPoints.join('、')}，请优先规划包含这些知识点的节点。`
+      : '',
     '请规划下一个学习节点。',
-  ].join('\n\n');
+  ].filter(Boolean).join('\n\n');
 }
 
 export async function planNode(

@@ -25,7 +25,7 @@ export async function generatePBLContent(
     issueCount?: number;
     language?: string;
   },
-  languageModel: unknown,
+  _languageModel: unknown,
   _options?: { onProgress?: (msg: string) => void },
 ): Promise<GeneratedPBLContent> {
   try {

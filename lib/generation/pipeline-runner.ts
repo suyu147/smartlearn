@@ -1,4 +1,3 @@
-import { nanoid } from 'nanoid';
 import type { SceneOutline } from '@/lib/types/generation';
 import type { Scene } from '@/lib/types/stage';
 import type { AICallFn, GenerationCallbacks, GenerationResult } from './pipeline-types';
@@ -35,7 +34,7 @@ export async function runGenerationPipeline(
 ): Promise<GenerationResult<Scene[]>> {
   const totalScenes = outlines.length;
   let completedCount = 0;
-  const scenes: Scene[] = [];
+  const _scenes: Scene[] = [];
 
   callbacks?.onProgress?.({
     currentStage: 3,
@@ -47,7 +46,7 @@ export async function runGenerationPipeline(
   });
 
   const results = await Promise.all(
-    outlines.map(async (outline, index) => {
+    outlines.map(async (outline, _index) => {
       try {
         const scene = await buildSceneFromOutline(
           outline,

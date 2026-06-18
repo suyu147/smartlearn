@@ -36,8 +36,11 @@ export const useMediaGenerationStore = create<MediaGenerationState>()((set, get)
       const { [id]: _, ...rest } = state.tasks;
       return { tasks: rest };
     }),
-  getTask: (elementId) => {
+  getTask: (elementId: string) => {
     const tasks = get().tasks;
+    // First try direct ID lookup (task.id matches the placeholder ID like "gen_vid_1")
+    if (tasks[elementId]) return tasks[elementId];
+    // Fall back to searching by elementId field (the slide element ID)
     return Object.values(tasks).find((t) => t.elementId === elementId);
   },
 }));

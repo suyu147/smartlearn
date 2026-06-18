@@ -68,6 +68,38 @@ const defaultAgents: AgentConfig[] = [
     taskTypes: ['evaluate'],
     isDefault: true,
   },
+  {
+    id: 'mindmap',
+    name: '思维导图Agent',
+    description: '生成知识点思维导图',
+    systemPrompt: resourcePrompts.mindmap,
+    taskTypes: ['resource_gen'],
+    isDefault: true,
+  },
+  {
+    id: 'video',
+    name: '视频Agent',
+    description: '搜索和推荐教学视频',
+    systemPrompt: resourcePrompts.video,
+    taskTypes: ['resource_gen'],
+    isDefault: true,
+  },
+  {
+    id: 'ppt',
+    name: '课件Agent',
+    description: '生成动态交互课件',
+    systemPrompt: resourcePrompts.ppt,
+    taskTypes: ['resource_gen'],
+    isDefault: true,
+  },
+  {
+    id: 'reading',
+    name: '拓展阅读Agent',
+    description: '策展拓展阅读材料',
+    systemPrompt: resourcePrompts.reading,
+    taskTypes: ['resource_gen'],
+    isDefault: true,
+  },
 ];
 
 interface AgentRegistryState {

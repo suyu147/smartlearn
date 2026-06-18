@@ -969,5 +969,62 @@
     "notBuilt": "プロフィール未構築",
     "notBuiltHint": "「プロフィール構築」をクリックして、対話でAIに学習ニーズを理解させましょう",
     "startChat": "対話を開始"
+  },
+  "nav": {
+    "dashboard": "ダッシュボード",
+    "profile": "プロフィール構築",
+    "workspace": "ワークスペース",
+    "agentOrchestration": "Agent オーケストレーション",
+    "evaluation": "学習評価",
+    "resourceLibrary": "リソースライブラリ",
+    "ppt": "ダイナミックスライド",
+    "settings": "設定"
+  },
+  "agentOrchestration": {
+    "title": "マルチエージェントオーケストレーション",
+    "subtitle": "各 Agent の実行状態と協力プロセスをリアルタイムで確認",
+    "status": {
+      "idle": "待機中",
+      "running": "実行中",
+      "completed": "完了",
+      "failed": "失敗"
+    },
+    "activityLog": "アクティビティログ",
+    "noActivityLog": "記録なし",
+    "completedAgents": "完了した Agent",
+    "failedAgents": "失敗した Agent",
+    "resourceDistribution": "リソースタイプ分布（完了）",
+    "noCompletedData": "完了データがありません",
+    "collaborationLog": "協力ログ",
+    "recentActivities": "最近 {{count}} 件のアクティビティ",
+    "noActivities": "アクティビティ記録なし",
+    "noActivitiesHint": "学習開始後、Agent のアクティビティがここに表示されます",
+    "times": "回"
+  },
+  "evaluation": {
+    "title": "学習効果評価",
+    "subtitle": "学習プロフィールの変化を追跡し、能力レーダーチャートとリソース推薦の根拠を確認",
+    "radarChart": "能力レーダーチャート",
+    "initialProfile": "初期プロフィール",
+    "currentProfile": "現在のプロフィール",
+    "noProfileData": "プロフィールデータがありません。まずプロフィールを構築してください",
+    "weakPointsTitle": "弱点の追跡",
+    "weakTopics": "プロフィールでマークされた弱点知識",
+    "noWeakTopics": "マークなし",
+    "errorPatterns": "よくある間違いパターン",
+    "noErrorPatterns": "記録なし",
+    "difficultAreas": "困難な領域",
+    "noDifficultAreas": "記録なし",
+    "agentFailures": "Agent 失敗記録",
+    "noAgentFailures": "失敗記録なし",
+    "timeline": "プロフィール更新タイムライン",
+    "initialProfileCreated": "初期プロフィール作成",
+    "minorUpdate": "微調整",
+    "currentVersionNoChange": "現在のバージョン（変更なし）",
+    "noTimeline": "更新記録なし。プロフィール更新後に自動的に記録されます",
+    "resourceReasoning": "リソース推薦の根拠",
+    "nodePrefix": "ノード",
+    "skippedResources": "スキップしたリソース：",
+    "noReasoning": "推薦記録なし。学習開始後にリソース推薦の根拠が表示されます"
   }
 }

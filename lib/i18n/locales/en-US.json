@@ -969,5 +969,62 @@
     "notBuilt": "Profile Not Built Yet",
     "notBuiltHint": "Click \"Build Profile\" to let AI understand your learning needs through conversation",
     "startChat": "Start Chat"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "profile": "Profile Builder",
+    "workspace": "Workspace",
+    "agentOrchestration": "Agent Orchestration",
+    "evaluation": "Evaluation",
+    "resourceLibrary": "Resource Library",
+    "ppt": "Dynamic Slides",
+    "settings": "Settings"
+  },
+  "agentOrchestration": {
+    "title": "Multi-Agent Orchestration",
+    "subtitle": "Monitor real-time Agent status and collaboration",
+    "status": {
+      "idle": "Idle",
+      "running": "Running",
+      "completed": "Completed",
+      "failed": "Failed"
+    },
+    "activityLog": "Activity Log",
+    "noActivityLog": "No records yet",
+    "completedAgents": "Completed Agents",
+    "failedAgents": "Failed Agents",
+    "resourceDistribution": "Resource Type Distribution (Completed)",
+    "noCompletedData": "No completed data yet",
+    "collaborationLog": "Collaboration Log",
+    "recentActivities": "{{count}} recent activities",
+    "noActivities": "No activity records",
+    "noActivitiesHint": "Agent activities will appear here after learning begins",
+    "times": "times"
+  },
+  "evaluation": {
+    "title": "Learning Evaluation",
+    "subtitle": "Track profile changes, view ability radar chart and resource recommendation reasoning",
+    "radarChart": "Ability Radar Chart",
+    "initialProfile": "Initial Profile",
+    "currentProfile": "Current Profile",
+    "noProfileData": "No profile data yet. Please build your profile first.",
+    "weakPointsTitle": "Weak Points Tracking",
+    "weakTopics": "Weak knowledge points from profile",
+    "noWeakTopics": "No weak points marked",
+    "errorPatterns": "Common Error Patterns",
+    "noErrorPatterns": "No records yet",
+    "difficultAreas": "Difficult Areas",
+    "noDifficultAreas": "No records yet",
+    "agentFailures": "Agent Failure Records",
+    "noAgentFailures": "No failure records",
+    "timeline": "Profile Update Timeline",
+    "initialProfileCreated": "Initial profile created",
+    "minorUpdate": "Minor update",
+    "currentVersionNoChange": "Current version (no changes)",
+    "noTimeline": "No update records yet. Updates will be logged automatically.",
+    "resourceReasoning": "Resource Recommendation Reasoning",
+    "nodePrefix": "Node",
+    "skippedResources": "Skipped resources:",
+    "noReasoning": "No recommendation records yet. Reasoning will appear after learning begins."
   }
 }

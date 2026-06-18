@@ -82,6 +82,8 @@ export interface DecisionConstraints {
   llmTimeoutMs?: number;
   forceInclude?: ResourceType[];
   forceExclude?: ResourceType[];
+  boostTypes?: ResourceType[];
+  suppressTypes?: ResourceType[];
 }
 
 export interface DecisionInputV2 {
@@ -149,6 +151,8 @@ export function decideNodeResourcePlan(input: DecisionInputV2): ResourceDecision
   const userPreferredFormats = profile?.interests?.preferredFormats ?? [];
   const forceInclude = constraints?.forceInclude ?? [];
   const forceExclude = new Set(constraints?.forceExclude ?? []);
+  const boostTypes = new Set(constraints?.boostTypes ?? []);
+  const suppressTypes = new Set(constraints?.suppressTypes ?? []);
   const allowPPT = constraints?.allowPPT ?? true;
   const maxTypes = constraints?.maxTypes;
   const text = normalizeText(`${node.nodeTitle} ${node.knowledgePoints.join(' ')}`);
@@ -230,6 +234,19 @@ export function decideNodeResourcePlan(input: DecisionInputV2): ResourceDecision
       rulesApplied.push(`force_exclude_${type}`);
       markSkip(type, '系统约束要求排除该资源类型');
       continue;
+    }
+
+    if (boostTypes.has(type) && items.get(type)?.action === 'skip') {
+      const item = items.get(type);
+      if (item && !forceExclude.has(type)) {
+        items.set(type, { ...item, action: 'generate', reason: `评估反馈：薄弱知识点需要${type}资源强化`, sourceLayer: 'feedback' as const });
+      }
+    }
+    if (suppressTypes.has(type) && items.get(type)?.action === 'generate') {
+      const item = items.get(type);
+      if (item && !forceInclude.includes(type)) {
+        items.set(type, { ...item, action: 'skip', reason: `评估反馈：已掌握内容跳过${type}资源` });
+      }
     }
 
     const item = items.get(type);

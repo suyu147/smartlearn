@@ -9,9 +9,9 @@ import { LaserOverlay } from '@/components/slide-renderer/Editor/LaserOverlay';
 import { ScreenElement } from '@/components/slide-renderer/Editor/ScreenElement';
 import { QuizRenderer } from '@/components/slide-renderer/Editor/QuizRenderer';
 import type { PPTElement, SlideBackground } from '@/lib/types/slides';
-import type { Scene, QuizQuestion } from '@/lib/types/stage';
+import type { QuizQuestion } from '@/lib/types/stage';
 
-const CANVAS_W = 1000;
+const _CANVAS_W = 1000;
 const CANVAS_H = 562.5;
 
 export function sortPPTElements(elements: PPTElement[]): PPTElement[] {

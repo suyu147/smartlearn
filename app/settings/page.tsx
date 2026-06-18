@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -9,9 +9,18 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useSettingsStore } from '@/lib/store/settings';
-import { Key, Palette, ImageIcon, Eye, EyeOff, Check, Loader2, BookOpen } from 'lucide-react';
+import { Key, Palette, ImageIcon, Eye, EyeOff, Check, Loader2, BookOpen, Cpu, Download, Upload, Sparkles, Network, Users } from 'lucide-react';
 import { useI18n } from '@/lib/hooks/use-i18n';
 import { IMAGE_GEN_PROVIDERS, type ImageGenProvider } from '@/lib/generation/image-generator';
+import { SPARK_MODELS } from '@/lib/ai/spark-adapter';
+import { useAgentRegistry } from '@/lib/orchestration/registry/store';
+import { ArchitectureOverview } from '@/components/architecture-overview';
+import { AgentRolesCard } from '@/components/agent-roles-card';
+import { useLearningProfileStore } from '@/lib/store/learning-profile';
+import { useResourcesStore } from '@/lib/store/resources';
+import { useLearningPathStore } from '@/lib/store/learning-path';
+import { useResourceDecisionsStore } from '@/lib/store/resource-decisions';
+import { useAgentActivityStore } from '@/lib/store/agent-activity';
 
 export default function SettingsPage() {
   const {
@@ -31,10 +40,25 @@ export default function SettingsPage() {
     setTheme,
     setLanguage,
     setGeneratePptImages,
+    sparkApiKey,
+    sparkApiSecret,
+    sparkModelId,
+    disabledAgentIds,
+    setSparkApiKey,
+    setSparkApiSecret,
+    setSparkModelId,
+    setDisabledAgentIds,
   } = useSettingsStore();
 
   const { t } = useI18n();
 
+  const agents = useAgentRegistry((s) => s.agents);
+  const resourceGenAgents = agents.filter((a) => a.taskTypes?.includes('resource_gen'));
+  const importFileRef = useRef<HTMLInputElement>(null);
+
+  const [showSparkApiKey, setShowSparkApiKey] = useState(false);
+  const [showSparkApiSecret, setShowSparkApiSecret] = useState(false);
+  const [importStatus, setImportStatus] = useState<string>('');
   const [imageGenProvider, setImageGenProvider] = useState<ImageGenProvider>('siliconflow');
   const [imageGenApiKey, setImageGenApiKey] = useState('');
   const [imageGenBaseUrl, setImageGenBaseUrl] = useState('');
@@ -111,6 +135,84 @@ export default function SettingsPage() {
       setIsSaving(false);
     }
   }, [imageGenProvider, imageGenApiKey, imageGenBaseUrl, imageGenModel, doubaoApiKey, doubaoBaseUrl, doubaoModel]);
+
+  const handleExportData = useCallback(() => {
+    const exportPayload = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      learningProfile: useLearningProfileStore.getState().profile,
+      profileHistory: useLearningProfileStore.getState().profileHistory,
+      resources: useResourcesStore.getState().storedResources,
+      learningPath: useLearningPathStore.getState().storedPaths,
+      resourceDecisions: {
+        logsBySession: useResourceDecisionsStore.getState().logsBySession,
+        overridesBySession: useResourceDecisionsStore.getState().overridesBySession,
+        feedbackBySession: useResourceDecisionsStore.getState().feedbackBySession,
+      },
+      agentActivity: useAgentActivityStore.getState().activityLog,
+      settings: {
+        providerId: useSettingsStore.getState().providerId,
+        modelId: useSettingsStore.getState().modelId,
+        sparkModelId: useSettingsStore.getState().sparkModelId,
+        theme: useSettingsStore.getState().theme,
+        language: useSettingsStore.getState().language,
+        disabledAgentIds: useSettingsStore.getState().disabledAgentIds,
+      },
+    };
+    const blob = new Blob([JSON.stringify(exportPayload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `smartlearn-export-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, []);
+
+  const handleImportData = useCallback(async (file: File) => {
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (data.version !== 1) {
+        setImportStatus('不支持的导出格式');
+        return;
+      }
+      if (data.learningProfile) {
+        useLearningProfileStore.getState().setProfile(data.learningProfile);
+      }
+      if (data.resources) {
+        const resourcesStore = useResourcesStore.getState();
+        for (const [sessionId, resources] of Object.entries(data.resources as Record<string, unknown>)) {
+          if (Array.isArray(resources)) {
+            for (const res of resources) {
+              resourcesStore.addResource(res);
+            }
+          }
+          void sessionId;
+        }
+      }
+      if (data.settings) {
+        const settingsStore = useSettingsStore.getState();
+        if (data.settings.providerId) settingsStore.setProviderId(data.settings.providerId);
+        if (data.settings.modelId) settingsStore.setModelId(data.settings.modelId);
+        if (data.settings.sparkModelId) settingsStore.setSparkModelId(data.settings.sparkModelId);
+        if (data.settings.theme) settingsStore.setTheme(data.settings.theme);
+        if (data.settings.language) settingsStore.setLanguage(data.settings.language);
+        if (data.settings.disabledAgentIds) settingsStore.setDisabledAgentIds(data.settings.disabledAgentIds);
+      }
+      setImportStatus('导入成功');
+      setTimeout(() => setImportStatus(''), 3000);
+    } catch {
+      setImportStatus('导入失败：文件格式错误');
+      setTimeout(() => setImportStatus(''), 3000);
+    }
+  }, []);
+
+  function handleAgentToggle(agentId: string, enabled: boolean) {
+    const next = enabled
+      ? disabledAgentIds.filter((id) => id !== agentId)
+      : [...disabledAgentIds, agentId];
+    setDisabledAgentIds(next);
+  }
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -421,6 +523,196 @@ export default function SettingsPage() {
                   </SelectContent>
                 </Select>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* 讯飞星火专用配置 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Sparkles className="h-4 w-4" />
+                讯飞星火配置
+              </CardTitle>
+              <CardDescription>
+                讯飞星火大模型专用 API 密钥与模型选择，独立于通用 AI 模型配置
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>API Key</Label>
+                <div className="relative">
+                  <Input
+                    type={showSparkApiKey ? 'text' : 'password'}
+                    value={sparkApiKey}
+                    onChange={(e) => setSparkApiKey(e.target.value)}
+                    placeholder="输入讯飞星火 API Key"
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSparkApiKey(!showSparkApiKey)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showSparkApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>API Secret</Label>
+                <div className="relative">
+                  <Input
+                    type={showSparkApiSecret ? 'text' : 'password'}
+                    value={sparkApiSecret}
+                    onChange={(e) => setSparkApiSecret(e.target.value)}
+                    placeholder="输入讯飞星火 API Secret"
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSparkApiSecret(!showSparkApiSecret)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showSparkApiSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>星火模型</Label>
+                <Select value={sparkModelId} onValueChange={setSparkModelId}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SPARK_MODELS.map((model) => (
+                      <SelectItem key={model.id} value={model.id}>
+                        {model.name}
+                        <span className="ml-2 text-xs text-muted-foreground">
+                          ({(model.contextWindow / 1000).toFixed(0)}K 上下文)
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1 pt-1 text-xs text-muted-foreground">
+                <p>在讯飞开放平台获取 API 密钥：https://www.xfyun.cn</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 多 Agent 开关管理 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Cpu className="h-4 w-4" />
+                资源生成 Agent 管理
+              </CardTitle>
+              <CardDescription>
+                开启或关闭各资源生成 Agent，关闭后对应类型的资源将不再自动生成
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {resourceGenAgents.map((agent) => {
+                const isDisabled = disabledAgentIds.includes(agent.id);
+                return (
+                  <div
+                    key={agent.id}
+                    className="flex items-center justify-between rounded-lg border p-3"
+                  >
+                    <div className="space-y-0.5">
+                      <p className="text-sm font-medium">{agent.name}</p>
+                      <p className="text-xs text-muted-foreground">{agent.description}</p>
+                    </div>
+                    <Switch
+                      checked={!isDisabled}
+                      onCheckedChange={(checked) => handleAgentToggle(agent.id, checked)}
+                    />
+                  </div>
+                );
+              })}
+              {resourceGenAgents.length === 0 && (
+                <p className="text-sm text-muted-foreground">暂无可配置的资源生成 Agent</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* 数据导出/导入 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Download className="h-4 w-4" />
+                数据导出与导入
+              </CardTitle>
+              <CardDescription>
+                导出学习画像、资源、路径等数据为 JSON 文件，或在另一设备导入恢复
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-3">
+                <Button variant="outline" onClick={handleExportData}>
+                  <Download className="mr-2 h-4 w-4" />
+                  导出数据
+                </Button>
+                <input
+                  ref={importFileRef}
+                  type="file"
+                  accept=".json"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleImportData(file);
+                    e.target.value = '';
+                  }}
+                />
+                <Button variant="outline" onClick={() => importFileRef.current?.click()}>
+                  <Upload className="mr-2 h-4 w-4" />
+                  导入数据
+                </Button>
+              </div>
+              {importStatus && (
+                <p className={`text-sm ${importStatus.includes('成功') ? 'text-green-600' : 'text-red-600'}`}>
+                  {importStatus}
+                </p>
+              )}
+              <div className="space-y-1 text-xs text-muted-foreground">
+                <p>导出内容包含：学习画像、学习路径、生成资源、决策日志、Agent 活动记录和应用设置</p>
+                <p>注意：API 密钥不会包含在导出数据中</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Agent 角色一览 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Users className="h-4 w-4" />
+                Agent 角色一览
+              </CardTitle>
+              <CardDescription>
+                悬停卡片可查看 System Prompt 摘要和任务类型
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <AgentRolesCard />
+            </CardContent>
+          </Card>
+
+          {/* 系统架构 */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Network className="h-4 w-4" />
+                系统架构
+              </CardTitle>
+              <CardDescription>
+                SmartLearn 多层架构总览：从用户浏览器到大模型调用
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ArchitectureOverview />
             </CardContent>
           </Card>
         </div>

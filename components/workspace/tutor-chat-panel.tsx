@@ -308,6 +308,9 @@ export function TutorChatPanel({ selectedResource = null }: Props) {
           )}
         </div>
 
+        <p className="mb-2 text-[11px] text-muted-foreground/70">
+          AI 辅导基于当前资源内容回答问题，可附加左侧资源进行针对性提问
+        </p>
         <div className="flex gap-2">
           <Textarea
             value={input}

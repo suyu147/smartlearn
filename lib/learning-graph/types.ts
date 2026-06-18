@@ -60,5 +60,6 @@ export type LearnEvent =
   | { type: 'profile_update'; dimensions: ProfileDimensions }
   | { type: 'path_update'; path: LearningPath }
   | { type: 'tutor_response'; text: string }
+  | { type: 'agent_status'; agentId: string; agentName: string; status: 'running' | 'completed' | 'failed'; resourceType: ResourceType }
   | { type: 'error'; message: string }
   | { type: 'done' };

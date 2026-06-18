@@ -46,7 +46,7 @@ export function CanvasToolbar({
   onTogglePresentation,
   whiteboardOpen,
   sidebarCollapsed,
-  chatCollapsed,
+  chatCollapsed: _chatCollapsed,
   onToggleSidebar,
   onToggleChat,
   showStopDiscussion,

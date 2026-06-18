@@ -8,7 +8,7 @@ import { CanvasArea } from '@/components/canvas/canvas-area';
 import { SceneSidebar } from '@/components/stage/scene-sidebar';
 import type { Scene, StageMode } from '@/lib/types/stage';
 import type { Action } from '@/lib/types/action';
-import type { AudioPlayer } from '@/lib/utils/audio-player';
+
 
 type EngineState = 'idle' | 'playing' | 'paused';
 
@@ -19,12 +19,12 @@ interface StageComponentProps {
 
 export function StageComponent({ initialScenes, mode = 'playback' }: StageComponentProps) {
   const {
-    stage,
+    stage: _stage,
     scenes,
     currentSceneId,
     setStage,
     setScenes,
-    addScene,
+    addScene: _addScene,
     setCurrentSceneId,
   } = useStageStore();
 

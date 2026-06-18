@@ -2,7 +2,6 @@
 
 import { useRef, useEffect, useMemo } from 'react';
 import { useCanvasStore } from '@/lib/store/canvas';
-import { useStageStore } from '@/lib/store/stage';
 import { SceneProvider } from '@/lib/contexts/scene-context';
 import { CanvasToolbar } from '@/components/canvas/canvas-toolbar';
 import { ScreenCanvas, computeContentHeight } from '@/components/slide-renderer/Editor/ScreenCanvas';
@@ -37,7 +36,7 @@ export function CanvasArea({
   currentScene,
   currentSceneIndex,
   scenesCount,
-  mode,
+  mode: _mode,
   engineState,
   whiteboardOpen,
   sidebarCollapsed,
@@ -57,7 +56,7 @@ export function CanvasArea({
   const canvasScale = useCanvasStore((s) => s.canvasScale);
   const setCanvasScale = useCanvasStore((s) => s.setCanvasScale);
 
-  const hasSlideContent = useMemo(() => {
+  const _hasSlideContent = useMemo(() => {
     if (!currentScene) return false;
     if (currentScene.type === 'slide' && currentScene.content?.type === 'slide') {
       const content = currentScene.content as { canvas?: import('@/lib/types/slides').Slide };

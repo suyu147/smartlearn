@@ -203,3 +203,16 @@ export type Action =
   | WbClearAction
   | WbCloseAction
   | DiscussionAction;
+
+/**
+ * Normalize action type from hyphen form (wb-draw-text) to underscore form (wb_draw_text).
+ * LLM outputs may use either form; the engine's switch only handles underscore.
+ * Non-wb and non-play actions (spotlight, laser, speech, discussion) pass through unchanged.
+ */
+export function normalizeActionType(type: string): ActionType {
+  // play-video → play_video
+  if (type === 'play-video') return 'play_video';
+  // wb-* → wb_* (e.g. wb-draw-text → wb_draw_text)
+  if (type.startsWith('wb-')) return type.replace(/^wb-/, 'wb_') as ActionType;
+  return type as ActionType;
+}

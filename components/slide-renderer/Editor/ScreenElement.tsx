@@ -47,7 +47,7 @@ function resolveShapeFill(fill: unknown): string | undefined {
   return fill.type === 'solid' ? fill.color : undefined;
 }
 
-export function ScreenElement({ element, contentHeight }: ScreenElementProps) {
+export function ScreenElement({ element, contentHeight: _contentHeight }: ScreenElementProps) {
   const el = element as Record<string, unknown>;
 
   const baseStyle: React.CSSProperties = {

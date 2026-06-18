@@ -97,6 +97,7 @@ export interface Resource {
     duration?: number;
     language?: string;
     profileUsed?: boolean;
+    error?: boolean;
     videoData?: VideoSearchResult;
     pptData?: import('@/lib/types/stage').Scene[];
     structuredDocument?: StructuredDocument;

@@ -66,14 +66,16 @@ export function QuizPlayer({
   const { path } = useLearningPathStore();
   const { currentSessionId } = useSessionsStore();
 
-  let quizzes: Quiz[] = [];
-  try {
-    const parsed = parseJsonResponse<Quiz[]>(content);
-    if (Array.isArray(parsed)) quizzes = parsed;
-    else if (parsed) quizzes = [parsed as unknown as Quiz];
-  } catch {
-    quizzes = [];
-  }
+  const quizzes = useMemo<Quiz[]>(() => {
+    try {
+      const parsed = parseJsonResponse<Quiz[]>(content);
+      if (Array.isArray(parsed)) return parsed;
+      if (parsed) return [parsed as unknown as Quiz];
+    } catch {
+      // ignore parse errors
+    }
+    return [];
+  }, [content]);
 
   const results = useMemo(() => {
     if (!showResults || quizzes.length === 0) return null;

@@ -3,7 +3,6 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useSessionsStore } from '@/lib/store/sessions';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
 import { ProfileChat } from '@/components/profile/profile-chat';
 import { ProfileCard } from '@/components/profile/profile-card';
 import { useLearningProfileStore } from '@/lib/store/learning-profile';
@@ -28,9 +27,10 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MessageSquare, User, BookOpen, Settings, Plus, History, Trash2, Clock, X } from 'lucide-react';
+import { MessageSquare, User, Plus, History, Trash2, Clock } from 'lucide-react';
 import { useI18n } from '@/lib/hooks/use-i18n';
 import { isProfileComplete } from '@/lib/utils/profile-utils';
+import { AppNav } from '@/components/layout/app-nav';
 
 function ProfilePageContent() {
   const router = useRouter();
@@ -63,7 +63,7 @@ function ProfilePageContent() {
     if (isProfileComplete(profile?.dimensions ?? null)) {
       router.replace('/workspace');
     }
-  }, [profile?.id, profile?.updatedAt, router, isNewChat, reset, setChatOpen, switchSession]);
+  }, [profile?.id, profile?.updatedAt, profile?.dimensions, router, isNewChat, reset, setChatOpen, switchSession]);
 
   const archivedList = Object.values(archivedProfiles);
 
@@ -89,24 +89,7 @@ function ProfilePageContent() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur">
-        <div className="container flex h-14 items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <BookOpen className="h-5 w-5 text-primary" />
-            <span className="font-bold">SmartLearn</span>
-          </Link>
-          <nav className="flex items-center gap-1">
-            <Link href="/workspace">
-              <Button variant="ghost" size="sm">学习工作台</Button>
-            </Link>
-            <Link href="/settings">
-              <Button variant="ghost" size="sm">
-                <Settings className="h-4 w-4" />
-              </Button>
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <AppNav />
       <div className="container flex-1 py-6">
         <div className="mb-6 flex items-center justify-between">
           <div>

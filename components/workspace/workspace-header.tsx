@@ -33,15 +33,17 @@ import { useLearningPathStore } from '@/lib/store/learning-path';
 import { useResourcesStore } from '@/lib/store/resources';
 import { useLearningProfileStore } from '@/lib/store/learning-profile';
 import { useResourceDecisionsStore } from '@/lib/store/resource-decisions';
+import type { AgentActivityEntry } from '@/lib/store/agent-activity';
 
 interface Props {
   profile: LearningProfile | null;
+  agentStatuses?: Record<string, AgentActivityEntry>;
 }
 
-export function WorkspaceHeader({ profile }: Props) {
+export function WorkspaceHeader({ profile, agentStatuses = {} }: Props) {
   const router = useRouter();
   const completeness = calculateProfileCompleteness(profile?.dimensions ?? null);
-  const { sessions, currentSessionId, switchSession, deleteSession, updateSessionStatus } = useSessionsStore();
+  const { sessions, currentSessionId, switchSession, deleteSession, updateSessionStatus: _updateSessionStatus } = useSessionsStore();
   const { loadPathForSession, deleteSessionData: deletePathData, reset: resetPath } = useLearningPathStore();
   const { loadResourcesForSession, deleteSessionData: deleteResourceData, reset: resetResources } = useResourcesStore();
   const { clearArchivedProfile, restoreArchivedProfile, archiveCurrentProfile, reset: resetProfile, setChatOpen } = useLearningProfileStore();
@@ -96,6 +98,8 @@ export function WorkspaceHeader({ profile }: Props) {
 
   const currentSession = sessions.find(s => s.id === currentSessionId);
   const otherSessions = sessions.filter(s => s.id !== currentSessionId); // 当前会话不可删除
+
+  const runningAgentCount = Object.values(agentStatuses).filter((entry) => entry.status === 'running').length;
 
   return (
     <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur">
@@ -160,6 +164,13 @@ export function WorkspaceHeader({ profile }: Props) {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+          )}
+
+          {runningAgentCount > 0 && (
+            <Badge variant="outline" className="text-xs gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-yellow-500 animate-pulse" />
+              {runningAgentCount} Agent 运行中
+            </Badge>
           )}
 
           <Badge variant="outline" className="text-xs">

@@ -3,7 +3,7 @@ import { streamLLM } from '@/lib/ai/llm';
 import { resolveModel } from '@/lib/server/resolve-model';
 import { resolveImageGenApiKey, resolveImageGenProvider } from '@/lib/server/provider-config';
 import type { ProviderId } from '@/lib/types/provider';
-import type { UserRequirements, SceneOutline, ImageMapping } from '@/lib/types/generation';
+import type { UserRequirements, ImageMapping } from '@/lib/types/generation';
 import type { Scene } from '@/lib/types/stage';
 import { generateSceneOutlinesFromRequirements } from '@/lib/generation/outline-generator';
 import { buildSceneFromOutline } from '@/lib/generation/scene-builder';

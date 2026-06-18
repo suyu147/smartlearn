@@ -16,11 +16,11 @@ interface SpeechButtonProps {
 
 export function SpeechButton({
   text,
-  size,
+  size: _size,
   disabled,
   onStart,
   onEnd,
-  onTranscription,
+  onTranscription: _onTranscription,
   className,
   children,
 }: SpeechButtonProps) {

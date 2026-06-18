@@ -26,3 +26,16 @@ export function isProfileComplete(dimensions: ProfileDimensions | null | undefin
 export function calculateProfileCompleteness(dimensions: ProfileDimensions | null | undefined): number {
   return Math.round((getFilledDimensionsCount(dimensions) / TOTAL_DIMENSIONS) * 100);
 }
+
+export function calculateDimensionScores(dimensions: ProfileDimensions): Record<keyof ProfileDimensions, number> {
+  return {
+    knowledgeBase: Math.min(100, (dimensions.knowledgeBase.subjects.length > 0 ? 60 : 0) + dimensions.knowledgeBase.subjects.reduce((acc, s) => acc + (s.mastery > 0 ? 10 : 0), 0)),
+    cognitiveStyle: dimensions.cognitiveStyle.preference ? 100 : (dimensions.cognitiveStyle.type !== 'reading' ? 70 : 30),
+    learningGoals: (dimensions.learningGoals.shortTerm.length > 0 ? 50 : 0) + (dimensions.learningGoals.longTerm ? 50 : 0),
+    weakPoints: (dimensions.weakPoints.topics.length > 0 ? 60 : 0) + (dimensions.weakPoints.errorPatterns.length > 0 ? 40 : 0),
+    timePreference: (dimensions.timePreference.preferredDuration > 0 ? 70 : 0) + (dimensions.timePreference.preferredTimeSlot ? 30 : 0),
+    interests: (dimensions.interests.domains.length > 0 ? 50 : 0) + (dimensions.interests.preferredFormats.length > 1 ? 50 : 0),
+    learningPace: dimensions.learningPace.speed !== 'moderate' ? 100 : 50,
+    errorPatterns: (dimensions.errorPatterns.commonMistakes.length > 0 ? 60 : 0) + (dimensions.errorPatterns.difficultAreas.length > 0 ? 40 : 0),
+  };
+}

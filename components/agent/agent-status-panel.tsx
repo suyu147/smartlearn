@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { AGENTS } from '@/lib/types/agent';
 import { useResourcesStore } from '@/lib/store/resources';
 import { RESOURCE_TYPE_LABELS, type ResourceType } from '@/lib/types/resource';
-import { Loader2, CheckCircle2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 const agentForResource: Record<ResourceType, string> = {
   document: 'document',

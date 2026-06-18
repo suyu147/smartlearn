@@ -6,12 +6,6 @@ interface SpotlightEffect {
   dimness: number;
 }
 
-interface LaserEffect {
-  elementId: string;
-  color: string;
-  duration?: number;
-}
-
 interface ZoomTarget {
   elementId: string;
   scale: number;

@@ -13,10 +13,12 @@ import { useResourcesStore } from '@/lib/store/resources';
 import { useSessionsStore } from '@/lib/store/sessions';
 import { useSettingsStore } from '@/lib/store/settings';
 import { useResourceDecisionsStore } from '@/lib/store/resource-decisions';
+import { useAgentActivityStore } from '@/lib/store/agent-activity';
 import { isProfileComplete } from '@/lib/utils/profile-utils';
 import type { LearningPath, LearningPathNode } from '@/lib/types/learning-path';
 import type { Resource } from '@/lib/types/resource';
-import type { LearnEvent, LearnRequest, QuizResultPayload } from '@/lib/learning-graph';
+import type { LearnEvent, LearnRequest } from '@/lib/learning-graph';
+import { AppNav } from '@/components/layout/app-nav';
 
 function buildPath(goal: string, completedNodes: LearningPathNode[], currentNode: LearningPathNode | null) {
   const nodes = [...completedNodes, ...(currentNode ? [currentNode] : [])];
@@ -47,6 +49,8 @@ export default function WorkspacePage() {
   const getFeedbackForSession = useResourceDecisionsStore((state) => state.getFeedbackForSession);
   const getOverrideForSession = useResourceDecisionsStore((state) => state.getOverrideForSession);
   const getDecisionLogsForSession = useResourceDecisionsStore((state) => state.getDecisionLogsForSession);
+  const updateAgentStatus = useAgentActivityStore((state) => state.updateAgentStatus);
+  const agentStatuses = useAgentActivityStore((state) => state.agentStatuses);
 
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -167,10 +171,18 @@ export default function WorkspacePage() {
         currentNodeRef.current = event.path.nodes.find((node) => node.status === 'in_progress') ?? null;
         setPath(event.path);
         break;
+      case 'agent_status':
+        updateAgentStatus({
+          agentId: event.agentId,
+          agentName: event.agentName,
+          status: event.status,
+          resourceType: event.resourceType,
+        });
+        break;
       default:
         break;
     }
-  }, [addResource, setPath, updateDimensions]);
+  }, [addDecisionLog, addResource, currentSessionId, setPath, updateAgentStatus, updateDimensions]);
 
   const sendLearnAction = useCallback(async (payload: LearnRequest) => {
     setIsStreaming(true);
@@ -212,9 +224,10 @@ export default function WorkspacePage() {
       currentNodeId: null,
       resourceFeedback: getFeedbackForSession(currentSessionId),
       nodeDecisionOverrides: getOverrideForSession(currentSessionId),
+      // TODO: 生产环境应移除 apiKey 前端传递，改用环境变量
       aiConfig: { providerId, modelId, apiKey, baseUrl },
     });
-  }, [apiKey, baseUrl, currentSessionId, modelId, path, profile, providerId, sendLearnAction]);
+  }, [apiKey, baseUrl, currentSessionId, getFeedbackForSession, getOverrideForSession, modelId, path, profile, providerId, sendLearnAction]);
 
   const handleResourceSelection = useCallback((resource: Resource) => {
     setSelectedResource(resource);
@@ -241,9 +254,10 @@ export default function WorkspacePage() {
       quizResults: [],
       resourceFeedback: getFeedbackForSession(currentSessionId),
       nodeDecisionOverrides: getOverrideForSession(currentSessionId),
+      // TODO: 生产环境应移除 apiKey 前端传递，改用环境变量
       aiConfig: { providerId, modelId, apiKey, baseUrl },
     });
-  }, [apiKey, baseUrl, completedNodes, currentNode, currentSessionId, modelId, path?.goal, profile, providerId, sendLearnAction, updateNodeStatus]);
+  }, [apiKey, baseUrl, completedNodes, currentNode, currentSessionId, getFeedbackForSession, getOverrideForSession, modelId, path?.goal, profile, providerId, sendLearnAction, updateNodeStatus]);
 
   const handleResourceView = useCallback((nodeId: string, type: Resource['type'], dwellMs: number) => {
     if (!currentSessionId) return;
@@ -282,7 +296,8 @@ export default function WorkspacePage() {
 
   return (
     <div className="flex h-screen flex-col">
-      <WorkspaceHeader profile={profile} />
+      <AppNav />
+      <WorkspaceHeader profile={profile} agentStatuses={agentStatuses} />
       <div className="flex flex-1 overflow-hidden">
         <LearningPathPanel
           path={path}

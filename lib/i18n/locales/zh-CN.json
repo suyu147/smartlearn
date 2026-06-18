@@ -969,5 +969,62 @@
     "notBuilt": "尚未构建画像",
     "notBuiltHint": "点击\u201c开始构建画像\u201d，通过对话让AI了解您的学习需求",
     "startChat": "开始对话"
+  },
+  "nav": {
+    "dashboard": "总览",
+    "profile": "画像构建",
+    "workspace": "学习工作台",
+    "agentOrchestration": "Agent 编排",
+    "evaluation": "学习评估",
+    "resourceLibrary": "资源库",
+    "ppt": "动态课件",
+    "settings": "设置"
+  },
+  "agentOrchestration": {
+    "title": "多智能体协同",
+    "subtitle": "实时观察各 Agent 的运行状态与协作过程",
+    "status": {
+      "idle": "等待",
+      "running": "运行中",
+      "completed": "已完成",
+      "failed": "失败"
+    },
+    "activityLog": "活动记录",
+    "noActivityLog": "暂无记录",
+    "completedAgents": "已完成 Agent",
+    "failedAgents": "失败 Agent",
+    "resourceDistribution": "资源类型分布（已完成）",
+    "noCompletedData": "暂无已完成数据",
+    "collaborationLog": "协作日志",
+    "recentActivities": "最近 {{count}} 条活动",
+    "noActivities": "暂无活动记录",
+    "noActivitiesHint": "开始学习后，Agent 活动将在此显示",
+    "times": "次"
+  },
+  "evaluation": {
+    "title": "学习效果评估",
+    "subtitle": "追踪学习画像变化、查看能力雷达图与资源推荐解释",
+    "radarChart": "能力雷达图",
+    "initialProfile": "初始画像",
+    "currentProfile": "当前画像",
+    "noProfileData": "暂无画像数据，请先完成画像构建",
+    "weakPointsTitle": "薄弱点追踪",
+    "weakTopics": "画像标记的薄弱知识点",
+    "noWeakTopics": "暂无标记",
+    "errorPatterns": "常见错误模式",
+    "noErrorPatterns": "暂无记录",
+    "difficultAreas": "困难领域",
+    "noDifficultAreas": "暂无记录",
+    "agentFailures": "Agent 失败记录",
+    "noAgentFailures": "暂无失败记录",
+    "timeline": "画像更新时间线",
+    "initialProfileCreated": "初始画像创建",
+    "minorUpdate": "微调更新",
+    "currentVersionNoChange": "当前版本（无变化）",
+    "noTimeline": "暂无更新记录，画像更新后将自动记录",
+    "resourceReasoning": "资源推荐解释",
+    "nodePrefix": "节点",
+    "skippedResources": "跳过的资源：",
+    "noReasoning": "暂无推荐记录，开始学习后将展示资源推荐解释"
   }
 }
