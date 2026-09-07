@@ -21,7 +21,8 @@ function authHeaders(): Record<string, string> {
 
 /**
  * Load all user state from the server and merge into local stores.
- * Only restores data when the local store is empty (fresh device).
+ * Merges server data with local data so new resources from other devices
+ * are always picked up, even if the local store already has data.
  *
  * @param userId - The current user's ID
  */
@@ -42,38 +43,59 @@ export async function loadUserStateFromServer(userId: string): Promise<void> {
     const hasData = !!(data.sessions?.length || data.learningPaths?.length || data.resources?.length);
     if (!hasData) return;
 
-    // 1. Restore sessions (only if local is empty → fresh device)
+    // 1. Merge sessions: server has newer → use server; local only → keep local
     if (data.sessions && data.sessions.length > 0) {
       const currentSessions = useSessionsStore.getState().sessions;
-      if (currentSessions.length === 0) {
-        const lastSession = data.sessions.reduce((latest, s) =>
-          s.updatedAt > latest.updatedAt ? s : latest,
-        );
-        // Directly set sessions into the store
-        useSessionsStore.setState({
-          sessions: data.sessions,
-          currentSessionId: lastSession.id,
-        });
-        log.info(`Restored ${data.sessions.length} sessions from server`);
+      const serverMap = new Map(data.sessions.map((s) => [s.id, s]));
+      const localMap = new Map(currentSessions.map((s) => [s.id, s]));
+
+      // Server sessions that local doesn't have
+      for (const [id, s] of serverMap) {
+        if (!localMap.has(id)) localMap.set(id, s);
       }
+
+      const merged = Array.from(localMap.values());
+      const lastSession = merged.reduce((latest, s) =>
+        s.updatedAt > latest.updatedAt ? s : latest,
+      );
+
+      useSessionsStore.setState({
+        sessions: merged,
+        currentSessionId: currentSessions.length === 0
+          ? lastSession.id
+          : useSessionsStore.getState().currentSessionId,
+      });
+      log.info(`Merged sessions: ${currentSessions.length} local + ${data.sessions.length} server = ${merged.length}`);
     }
 
-    // 2. Restore learning paths (only if local is empty)
+    // 2. Merge learning paths: prefer server if it's newer
     if (data.learningPaths && data.learningPaths.length > 0) {
       const currentPath = useLearningPathStore.getState().path;
-      if (!currentPath) {
-        const latest = data.learningPaths.reduce((latest, p) =>
-          p.updatedAt > latest.updatedAt ? p : latest,
-        );
-        useLearningPathStore.getState().setPath(latest);
-        log.info(`Restored ${data.learningPaths.length} learning paths from server`);
+      const latestServer = data.learningPaths.reduce((latest, p) =>
+        p.updatedAt > latest.updatedAt ? p : latest,
+      );
+
+      if (!currentPath || latestServer.updatedAt > currentPath.updatedAt) {
+        // Merge: keep local nodes that have resources, supplement with server nodes
+        if (currentPath) {
+          const serverNodeMap = new Map(latestServer.nodes.map((n) => [n.id, n]));
+          for (const node of currentPath.nodes) {
+            if (!serverNodeMap.has(node.id)) {
+              latestServer.nodes.push(node);
+            }
+          }
+        }
+        useLearningPathStore.getState().setPath(latestServer);
+        log.info(`Loaded learning path from server (updatedAt=${latestServer.updatedAt})`);
       }
     }
 
-    // 3. Restore resources via store's syncFromServer (merges with current session)
+    // 3. Merge resources: always pull new ones from server
     if (data.resources && data.resources.length > 0) {
       const sid = useSessionsStore.getState().currentSessionId;
       if (sid) {
+        // Reset sync flag so we always check for new data on each page load
+        useResourcesStore.setState({ synced: false });
         await useResourcesStore.getState().syncFromServer(userId, sid);
       }
     }

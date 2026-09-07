@@ -45,6 +45,7 @@ import type { ConceptHotspot } from '@/lib/types/slides'
 import type { CodeButton } from '@/lib/types/stage'
 import type { Scene } from '@/lib/types/stage'
 import { useResourceDecisionsStore } from '@/lib/store/resource-decisions'
+import { saveUserStateToServer, loadUserStateFromServer } from '@/lib/api/user-sync'
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -397,6 +398,20 @@ export default function SmartLearnPage() {
   }, [setProfile])
 
   // =========================================================================
+  // Sync user state with server (cross-device data sharing)
+  // Push local → server first, then pull server → local
+  // =========================================================================
+
+  useEffect(() => {
+    if (!authUser?.id) return
+    // 先推送本地数据到服务器（处理部署前生成但未同步的旧数据）
+    saveUserStateToServer(authUser.id).then(() => {
+      // 再拉取服务器数据（合并其他设备的数据）
+      loadUserStateFromServer(authUser.id)
+    })
+  }, [authUser?.id])
+
+  // =========================================================================
   // SSE event processor
   // =========================================================================
 
@@ -546,6 +561,10 @@ export default function SmartLearnPage() {
           if (latestActiveNode && latestActiveNode.resources && latestActiveNode.resources.length > 0) {
             updateNodeStatus(latestActiveNode.id, 'completed')
           }
+          // Save to server for cross-device sync (authenticated users only)
+          if (authUser?.id && authUser.id !== 'anonymous') {
+            saveUserStateToServer(authUser.id)
+          }
           break
         }
 
@@ -554,7 +573,7 @@ export default function SmartLearnPage() {
           break
       }
     },
-    [setPath, addResource, updateDimensions, updateNodeStatus],
+    [setPath, addResource, updateDimensions, updateNodeStatus, authUser],
   )
 
   // =========================================================================

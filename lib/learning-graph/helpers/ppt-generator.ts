@@ -5,20 +5,16 @@ import { generateSceneOutlinesFromRequirements } from '@/lib/generation/outline-
 import { buildSceneFromOutline } from '@/lib/generation/scene-builder';
 import { batchGenerateImages } from '@/lib/generation/image-generator';
 import { parseJsonResponse } from '@/lib/generation/json-repair';
-import { assignSpeakersToScenesAsync } from '@/lib/generation/speaker-postprocessor';
-import { getSpeakerById } from '@/lib/generation/speaker-roster';
-import { getDataDir } from '@/lib/paths';
+import { assignSpeakersToScenes } from '@/lib/generation/speaker-postprocessor';
 import type { Scene, CodeButton } from '@/lib/types/stage';
 import type { ProviderId } from '@/lib/types/provider';
 import type { ConceptHotspot } from '@/lib/types/slides';
 import type { ImageMapping, UserRequirements } from '@/lib/types/generation';
-import { promises as fs } from 'fs';
-import path from 'path';
 
-function createAICallFn(providerId?: string, modelId?: string, apiKey?: string, baseUrl?: string) {
+function createAICallFn(providerId?: string, modelId?: string, apiKey?: string, baseUrl?: string, maxOutputTokens = 8192) {
   return async (systemPrompt: string, userPrompt: string) => {
     const { model } = resolveModel({ providerId: providerId as ProviderId | undefined, modelId, apiKey, baseUrl });
-    const result = await streamLLM({ model, system: systemPrompt, prompt: userPrompt, maxOutputTokens: 8192 }, 'ppt-generation');
+    const result = await streamLLM({ model, system: systemPrompt, prompt: userPrompt, maxOutputTokens }, 'ppt-generation');
     return result.text;
   };
 }
@@ -134,88 +130,55 @@ function injectCodeButtons(scenes: Scene[], buttons: CodeButton[]) {
   content.codeButtons = buttons;
 }
 
-// ── 台词导出 ────────────────────────────────────────────
+export async function generatePptScenes(
+  requirement: string,
+  aiConfig?: { providerId?: string; modelId?: string; apiKey?: string; baseUrl?: string },
+  enableImageGeneration?: boolean,
+  includeInteractive?: boolean,
+  knowledgePoints?: string[],
+  onProgress?: (message: string) => void,
+) {
+  const report = onProgress ?? (() => undefined);
+  const providerId = aiConfig?.providerId;
+  const modelId = aiConfig?.modelId;
+  const apiKey = aiConfig?.apiKey;
+  const baseUrl = aiConfig?.baseUrl;
 
-/**
- * 将所有场景中的 speech action 台词汇总并写入文本文件。
- * 文件保存到 data/ppt-scripts/ 目录下，文件名包含时间戳。
- * 写入失败不影响 PPT 主流程。
- */
-async function exportScriptsToFile(scenes: Scene[], requirement: string): Promise<void> {
-  try {
-    if (!scenes.length) return;
+  // 按任务类型分配合理的 maxOutputTokens，减少不必要的 token 开销
+  const aiCallLarge = createAICallFn(providerId, modelId, apiKey, baseUrl, 8192);   // 大纲、slide 内容（复杂 JSON）
+  const aiCallMedium = createAICallFn(providerId, modelId, apiKey, baseUrl, 4096);  // 代码按钮、action 生成
+  const aiCallSmall = createAICallFn(providerId, modelId, apiKey, baseUrl, 2048);   // 概念讲解 snippet
 
-    // 收集每个场景的台词
-    const lines: string[] = [];
-    let totalSpeeches = 0;
-
-    for (const scene of scenes) {
-      const speeches = (scene.actions ?? []).filter(
-        (a): a is Extract<typeof a, { type: 'speech' }> => a.type === 'speech' && typeof (a as { text?: string }).text === 'string' && !!((a as { text?: string }).text),
-      );
-      if (speeches.length === 0) continue;
-
-      lines.push('============================================');
-      lines.push(`【第 ${scene.order + 1} 页】${scene.title}`);
-      lines.push('--------------------------------------------');
-      for (const s of speeches) {
-        const speaker = s.agentId ? getSpeakerById(s.agentId) : undefined;
-        const speakerName = speaker?.name ?? '未分配角色';
-        lines.push(`${speakerName}：${s.text}`);
-        totalSpeeches++;
-      }
-      lines.push('');
-    }
-
-    const timestamp = new Date();
-    const stamp =
-      `${timestamp.getFullYear()}${String(timestamp.getMonth() + 1).padStart(2, '0')}${String(timestamp.getDate()).padStart(2, '0')}` +
-      `-${String(timestamp.getHours()).padStart(2, '0')}${String(timestamp.getMinutes()).padStart(2, '0')}${String(timestamp.getSeconds()).padStart(2, '0')}`;
-
-    const header = [
-      'PPT 台词汇总',
-      `主题：${requirement}`,
-      `生成时间：${timestamp.toISOString()}`,
-      `共 ${scenes.length} 页，${totalSpeeches} 条台词`,
-      '',
-    ].join('\n');
-
-    const content = `${header}\n${lines.join('\n')}`;
-
-    const outDir = getDataDir('ppt-scripts');
-    await fs.mkdir(outDir, { recursive: true });
-    const filePath = path.join(outDir, `ppt-scripts-${stamp}.txt`);
-    await fs.writeFile(filePath, content, 'utf8');
-
-    console.info(`[ppt-generator] 台词已导出：${filePath}`);
-  } catch (err) {
-    // 导出失败绝不影响 PPT 生成主流程
-    console.warn('[ppt-generator] 台词导出失败：', err);
-  }
-}
-
-export async function generatePptScenes(requirement: string, aiConfig?: { providerId?: string; modelId?: string; apiKey?: string; baseUrl?: string }, enableImageGeneration?: boolean, includeInteractive?: boolean, knowledgePoints?: string[]) {
-  const aiCall = createAICallFn(aiConfig?.providerId, aiConfig?.modelId, aiConfig?.apiKey, aiConfig?.baseUrl);
   const imageGenProvider = resolveImageGenProvider();
   const imageGenAvailable = enableImageGeneration && !!resolveImageGenApiKey(imageGenProvider, undefined);
   const requirements: UserRequirements = { requirement, language: 'zh-CN' };
-  const outlineResult = await generateSceneOutlinesFromRequirements(requirements, undefined, undefined, aiCall, undefined, { imageGenerationEnabled: imageGenAvailable, videoGenerationEnabled: false, includeInteractive: includeInteractive !== false });
+
+  report('正在生成PPT大纲...');
+  const outlineResult = await generateSceneOutlinesFromRequirements(requirements, undefined, undefined, aiCallLarge, undefined, { imageGenerationEnabled: imageGenAvailable, videoGenerationEnabled: false, includeInteractive: includeInteractive !== false });
   if (!outlineResult.success || !outlineResult.data) return [];
+
   let generatedMediaMapping: ImageMapping = {};
   if (imageGenAvailable) {
     try {
       const allMediaGens = outlineResult.data.filter((o) => o.mediaGenerations?.length).flatMap((o) => o.mediaGenerations!);
-      if (allMediaGens.length > 0) generatedMediaMapping = Object.fromEntries(await batchGenerateImages(allMediaGens));
+      if (allMediaGens.length > 0) {
+        report(`正在生成配图 (${allMediaGens.length}张)...`);
+        generatedMediaMapping = Object.fromEntries(await batchGenerateImages(allMediaGens));
+      }
     } catch (imgErr) {
       // Image generation failure must never block PPT generation.
       // Proceed with empty mapping — slides will use placeholder images.
       console.warn('[ppt-generator] Image generation failed, proceeding without images:', imgErr);
     }
   }
+
   const stageId = `stage_${Date.now()}`;
   const scenes: Scene[] = [];
-  for (const outline of outlineResult.data) {
-    const scene = await buildSceneFromOutline(outline, aiCall, stageId, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, generatedMediaMapping, requirement);
+  const totalOutlines = outlineResult.data.length;
+  for (let i = 0; i < totalOutlines; i++) {
+    const outline = outlineResult.data[i];
+    report(`正在构建第 ${i + 1}/${totalOutlines} 页...`);
+    const scene = await buildSceneFromOutline(outline, aiCallLarge, stageId, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, generatedMediaMapping, requirement);
     if (scene) {
       backfillGeneratedImages(scene, generatedMediaMapping);
       scenes.push(scene);
@@ -225,33 +188,32 @@ export async function generatePptScenes(requirement: string, aiConfig?: { provid
   // ── 后处理：生成概念热区和代码按钮 ──
   const kps = knowledgePoints ?? [];
   if (kps.length > 0 && scenes.length > 0) {
+    report('正在添加知识点讲解和代码示例...');
     const slideContext = collectSlideText(scenes);
     const tasks: Promise<void>[] = [];
 
-    // 概念 snippet 生成
+    // 概念 snippet 生成（输出简短，用 2048 tokens）
     tasks.push(
-      generateConceptSnippets(aiCall, kps, slideContext).then((hotspots) => {
+      generateConceptSnippets(aiCallSmall, kps, slideContext).then((hotspots) => {
         injectHotspots(scenes, hotspots);
       }),
     );
 
-    // 代码按钮生成（仅当知识点涉及编程/算法时）
+    // 代码按钮生成（代码较长，用 4096 tokens）
     if (needsCodeButtons(kps)) {
       tasks.push(
-        generateCodeButtons(aiCall, kps, slideContext).then((buttons) => {
+        generateCodeButtons(aiCallMedium, kps, slideContext).then((buttons) => {
           injectCodeButtons(scenes, buttons);
         }),
       );
     }
 
-    // 角色分配：为每个 speech action 标注说话者（主讲老师/助教/学生）
-    tasks.push(assignSpeakersToScenesAsync(scenes, aiCall));
+    // 角色分配：纯规则驱动（无需 LLM 调用）
+    // 因为 slide-actions 生成时 LLM 已在输出中标注了 agentId，剩余未标注的用规则填充即可
+    assignSpeakersToScenes(scenes);
 
     await Promise.all(tasks);
   }
-
-  // ── 后处理：将所有台词导出到文本文件 ──
-  await exportScriptsToFile(scenes, requirement);
 
   return scenes.sort((a, b) => a.order - b.order);
 }

@@ -23,6 +23,8 @@ const log = createLogger('sse-stream');
  *              and can use it to stream events.  Must NOT call
  *              controller.close() — the helper does that automatically.
  */
+const HEARTBEAT_INTERVAL_MS = 15_000; // 每15秒发送心跳，防止代理超时断开连接
+
 export function createSSEStream(
   source: string,
   sessionId: string,
@@ -50,6 +52,20 @@ export function createSSEStream(
 
       const isClosed = () => clientDisconnected;
 
+      // 心跳定时器：定期发送 SSE 注释以保持连接活跃
+      const heartbeatTimer = setInterval(() => {
+        if (clientDisconnected) {
+          clearInterval(heartbeatTimer);
+          return;
+        }
+        try {
+          controller.enqueue(encoder.encode(': heartbeat\n\n'));
+        } catch {
+          clientDisconnected = true;
+          clearInterval(heartbeatTimer);
+        }
+      }, HEARTBEAT_INTERVAL_MS);
+
       try {
         await run(emit, isClosed);
 
@@ -73,6 +89,8 @@ export function createSSEStream(
         }
 
         try { controller.close(); } catch { /* already closed */ }
+      } finally {
+        clearInterval(heartbeatTimer);
       }
     },
 

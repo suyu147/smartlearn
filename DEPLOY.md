@@ -35,13 +35,16 @@
 
 ### 外部服务（按需配置）
 
-| 服务       | 用途             | 是否必须 |
-| ---------- | ---------------- | -------- |
-| AI 大模型  | 核心智能对话      | 是       |
-| Embedding  | 向量化（知识库）  | 是       |
-| TTS / ASR  | 语音合成与识别    | 否       |
-| 图片生成   | 生成配图         | 否       |
-| Web 搜索   | 联网搜索         | 否       |
+| 服务            | 用途                 | 是否必须 |
+| --------------- | -------------------- | -------- |
+| AI 大模型       | 核心智能对话          | 是       |
+| Embedding       | 向量化（知识库）      | 是       |
+| TTS / ASR       | 语音合成与识别        | 否       |
+| 图片生成        | 生成配图             | 否       |
+| Web 搜索        | 联网搜索             | 否       |
+| 视频生成        | RunwayML 短视频生成   | 否       |
+| 数字人视频生成  | 讯飞 VMS 数字人视频   | 否       |
+| 代码沙箱        | Piston 代码执行       | 否       |
 
 ---
 
@@ -284,15 +287,38 @@ pm2 start .next/standalone/server.js --name smartlearn --node-args="--max-old-sp
 | `POSTGRES_PASSWORD`| 密码（Docker 部署用）          | 否   |
 | `POSTGRES_DB`      | 数据库名（Docker 部署用）      | 否   |
 
+### DeepTutor 工具模型
+
+用于 consolidator、memory LLM extraction（L2/L3 事实抽取）。不配置时默认使用 openai/gpt-4o-mini。
+
+| 变量               | 说明                                   | 必填 |
+| ------------------ | -------------------------------------- | ---- |
+| `DT_TOOL_PROVIDER` | 工具模型提供商（默认 openai）           | 否   |
+| `DT_TOOL_MODEL`    | 模型名称（默认 gpt-4o-mini）            | 否   |
+| `DT_TOOL_API_KEY`  | API 密钥（不填则回退到主模型 API Key）  | 否   |
+
 ### 可选功能
 
-| 变量                 | 说明                        | 必填 |
-| -------------------- | --------------------------- | ---- |
-| `VISION_PROVIDER`    | 视觉代理（主模型不支持图片时） | 否   |
-| `IMAGE_GEN_PROVIDER` | 图片生成提供商               | 否   |
-| `DT_VOICE_PROVIDER`  | TTS 语音提供商               | 否   |
-| `DT_SEARCH_PROVIDER` | 联网搜索提供商               | 否   |
-| `DT_MCP_SERVERS`     | MCP 工具服务器（JSON 格式）   | 否   |
+| 变量                    | 说明                                  | 必填 |
+| ----------------------- | ------------------------------------- | ---- |
+| `VISION_PROVIDER`       | 视觉代理（主模型不支持图片时）          | 否   |
+| `IMAGE_GEN_PROVIDER`    | 图片生成提供商（openai/siliconflow/doubao） | 否   |
+| `DOUBAO_IMAGE_API_KEY`  | 豆包图片生成 API Key（IMAGE_GEN_PROVIDER=doubao 时使用） | 否   |
+| `DOUBAO_IMAGE_MODEL`    | 豆包图片生成模型（默认 doubao-seedream-4-5-251128） | 否   |
+| `DT_VOICE_PROVIDER`     | TTS 语音提供商                         | 否   |
+| `DT_VIDEO_PROVIDER`     | 视频生成提供商（runwayml/pika）        | 否   |
+| `RUNWAYML_API_SECRET`   | RunwayML API 密钥                      | 否   |
+| `RUNWAYML_MODEL`        | RunwayML 模型（默认 gen4_turbo）       | 否   |
+| `XFYUN_VMS_APP_ID`      | 讯飞数字人视频 App ID                  | 否   |
+| `XFYUN_VMS_API_KEY`     | 讯飞数字人视频 API Key                 | 否   |
+| `XFYUN_VMS_API_SECRET`  | 讯飞数字人视频 API Secret              | 否   |
+| `XFYUN_VMS_BASE_URL`    | 讯飞 VMS 基础 URL（默认 HTTPS 地址）   | 否   |
+| `PISTON_API_URL`        | Piston 代码沙箱 URL（Docker 自动配置） | 否   |
+| `PISTON_API_KEY`        | Piston API 密钥（可选）                | 否   |
+| `DT_SEARCH_PROVIDER`    | 联网搜索提供商                         | 否   |
+| `DT_MCP_SERVERS`        | MCP 工具服务器（JSON 格式）            | 否   |
+
+> ⚠️ `XFYUN_VMS_BASE_URL` 必须使用 HTTPS（如 `https://vms.cn-huadong-1.xf-yun.com`），HTTP 仅限内网测试，公网调用会失败。
 
 ---
 

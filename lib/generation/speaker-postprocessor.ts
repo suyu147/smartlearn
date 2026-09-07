@@ -16,7 +16,6 @@
 import type { Scene } from '@/lib/types/stage';
 import type { SpeechAction, Action } from '@/lib/types/action';
 import { CLASSROOM_SPEAKERS, type ClassroomSpeaker } from './speaker-roster';
-import { parseJsonResponse } from './json-repair';
 
 // ── 规则启发式分配 ──────────────────────────────────────
 
@@ -77,94 +76,16 @@ function assignSpeakersByRule(actions: Action[]): void {
   }
 }
 
-// ── LLM 精确分配 ────────────────────────────────────────
-
-/**
- * 用 LLM 为台词分配角色（更精确但更慢）。
- * 将所有台词打包发给模型，让它标注每句的 speaker id。
- */
-async function assignSpeakersByLLM(
-  actions: Action[],
-  aiCall: (sys: string, user: string) => Promise<string>,
-): Promise<void> {
-  // 只处理没有 agentId 的 speech action
-  const speeches = actions
-    .map((a, idx) => (a.type === 'speech' ? { idx, text: a.text, hasAgentId: !!a.agentId } : null))
-    .filter(Boolean) as Array<{ idx: number; text: string; hasAgentId: boolean }>;
-
-  // 过滤出需要分配的台词
-  const unassigned = speeches.filter((s) => !s.hasAgentId);
-  if (unassigned.length === 0) return; // 全部已由 LLM 输出标注
-
-  const speakerList = CLASSROOM_SPEAKERS.map((s) => `"${s.id}"(${s.name}-${s.persona})`).join('、');
-
-  const systemPrompt = '你是课堂台词角色分配器。请只输出 JSON 数组，不要输出任何其他文字。';
-  const userPrompt = [
-    `角色列表：${speakerList}`,
-    `台词列表：${JSON.stringify(unassigned)}`,
-    '请为每句台词分配最合适的角色 id。规则：',
-    '1. 主要讲解内容分配给 teacher',
-    '2. 补充说明、举例类比分配给 assistant',
-    '3. 疑问和追问分配给 student-curious 或 student-thinker',
-    '4. teacher 应该占 60% 以上的台词',
-    '输出格式：[{"idx":0,"speakerId":"teacher"},...]',
-  ].join('\n');
-
-  try {
-    const raw = await aiCall(systemPrompt, userPrompt);
-    const parsed = parseJsonResponse<Array<{ idx: number; speakerId: string }>>(raw);
-    if (!Array.isArray(parsed)) {
-      assignSpeakersByRule(actions);
-      return;
-    }
-    const assignmentMap = new Map(parsed.map((item) => [item.idx, item.speakerId]));
-
-    for (const { idx } of unassigned) {
-      const speakerId = assignmentMap.get(idx);
-      const speaker = CLASSROOM_SPEAKERS.find((s) => s.id === speakerId) ?? classifyByRule(actions[idx].text ?? '');
-      (actions[idx] as SpeechAction).agentId = speaker.id;
-    }
-  } catch {
-    // LLM 调用失败，回退到规则
-    assignSpeakersByRule(actions);
-  }
-}
-
 // ── 公共 API ────────────────────────────────────────────
 
-export interface SpeakerAssignmentOptions {
-  /** 使用 LLM 分配（默认 false，使用规则） */
-  useLLM?: boolean;
-  /** LLM 调用函数（useLLM=true 时必填） */
-  aiCall?: (sys: string, user: string) => Promise<string>;
-}
-
 /**
- * 为所有场景中的 speech action 分配 agentId（角色标识）
+ * 为所有场景中的 speech action 分配 agentId（角色标识）。
+ * 纯规则驱动：slide-actions 生成时 LLM 已在输出中直接标注了 agentId，
+ * 此处仅对少量未标注的台词用规则补全。
  */
-export function assignSpeakersToScenes(scenes: Scene[], options?: SpeakerAssignmentOptions): void {
+export function assignSpeakersToScenes(scenes: Scene[]): void {
   for (const scene of scenes) {
     if (!scene.actions?.length) continue;
-
-    if (options?.useLLM && options.aiCall) {
-      // LLM 分配是异步的，这里同步调用
-      // 外层需要 await wrapPromise
-      assignSpeakersByRule(scene.actions); // 先用规则做初始赋值
-    } else {
-      assignSpeakersByRule(scene.actions);
-    }
-  }
-}
-
-/**
- * 异步版本：用 LLM 为所有场景分配角色
- */
-export async function assignSpeakersToScenesAsync(
-  scenes: Scene[],
-  aiCall: (sys: string, user: string) => Promise<string>,
-): Promise<void> {
-  for (const scene of scenes) {
-    if (!scene.actions?.length) continue;
-    await assignSpeakersByLLM(scene.actions, aiCall);
+    assignSpeakersByRule(scene.actions);
   }
 }

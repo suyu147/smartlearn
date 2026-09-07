@@ -85,10 +85,17 @@ if not exist ".env" (
     echo ╔══════════════════════════════════════════════════╗
     echo ║  [重要] .env 文件已创建，请先编辑以下必填项：       ║
     echo ║                                                    ║
-    echo ║  1. DATABASE_URL      — 数据库连接串              ║
-    echo ║  2. AI_API_KEY        — AI 大模型 API Key         ║
-    echo ║  3. JWT_SECRET        — JWT 密钥（任意 32+ 字符） ║
-    echo ║  4. DT_ENCRYPTION_SECRET — 加密密钥（32+ 字符）   ║
+    echo ║  1. DATABASE_URL         — 数据库连接串            ║
+    echo ║  2. AI_API_KEY           — AI 大模型 API Key       ║
+    echo ║  3. JWT_SECRET           — JWT 密钥（32+ 字符）    ║
+    echo ║  4. DT_ENCRYPTION_SECRET — 加密密钥（32+ 字符）    ║
+    echo ║  5. DT_EMBEDDING_API_KEY — Embedding API Key（RAG）║
+    echo ║                                                    ║
+    echo ║  可选但建议一并配置：                                ║
+    echo ║  - AI_PROVIDER / AI_MODEL    — 主模型提供商/型号   ║
+    echo ║  - DT_EMBEDDING_PROVIDER     — 默认 siliconflow    ║
+    echo ║  - DT_EMBEDDING_MODEL        — 默认 BAAI/bge-m3    ║
+    echo ║  - AUTH_MODE                 — disabled/single/multi║
     echo ║                                                    ║
     echo ║  配置完成后按任意键继续部署...                      ║
     echo ╚══════════════════════════════════════════════════╝
@@ -99,19 +106,39 @@ if not exist ".env" (
 
 :: 校验必填项
 set MISSING=0
+set MISSING_KEYS=
 for /f "usebackq tokens=1,* delims==" %%a in (".env") do (
     set "k=%%a"
     set "v=%%b"
     :: Remove leading/trailing spaces and comments
     for /f "tokens=1 delims=#" %%x in ("!k!") do set "k=%%x"
-    if "!k!"=="JWT_SECRET" if "!v!"=="" set MISSING=1
-    if "!k!"=="DT_ENCRYPTION_SECRET" if "!v!"=="" set MISSING=1
+    if "!k!"=="JWT_SECRET" if "!v!"=="" (
+        set MISSING=1
+        set "MISSING_KEYS=!MISSING_KEYS! JWT_SECRET"
+    )
+    if "!k!"=="DT_ENCRYPTION_SECRET" if "!v!"=="" (
+        set MISSING=1
+        set "MISSING_KEYS=!MISSING_KEYS! DT_ENCRYPTION_SECRET"
+    )
+    if "!k!"=="AI_API_KEY" if "!v!"=="" (
+        set MISSING=1
+        set "MISSING_KEYS=!MISSING_KEYS! AI_API_KEY"
+    )
+    if "!k!"=="DT_EMBEDDING_API_KEY" if "!v!"=="" (
+        set MISSING=1
+        set "MISSING_KEYS=!MISSING_KEYS! DT_EMBEDDING_API_KEY"
+    )
 )
 if %MISSING% equ 1 (
     echo ╔══════════════════════════════════════════════════╗
-    echo ║  [警告] .env 中存在未配置的必填项！                 ║
-    echo ║  - JWT_SECRET                                    ║
-    echo ║  - DT_ENCRYPTION_SECRET                          ║
+    echo ║  [警告] .env 中存在未配置的必填项：                ║
+    echo ║  !MISSING_KEYS!                                    ║
+    echo ║                                                    ║
+    echo ║  必填项说明：                                       ║
+    echo ║  - JWT_SECRET           — JWT 签名密钥              ║
+    echo ║  - DT_ENCRYPTION_SECRET — API Key 加密密钥          ║
+    echo ║  - AI_API_KEY           — AI 大模型密钥             ║
+    echo ║  - DT_EMBEDDING_API_KEY — 向量化密钥（知识库 RAG）  ║
     echo ║                                                    ║
     echo ║  请编辑 .env 文件填写后重新运行本脚本。             ║
     echo ╚══════════════════════════════════════════════════╝

@@ -41,7 +41,11 @@ async function generateSingleResource(
   try {
     // PPT 走专用生成器
     if (type === 'ppt') {
-      const pptScenes = await generatePptScenes(`讲解：${knowledgePoints.join('、')}`, aiConfig, true, true, knowledgePoints);
+      const pptScenes = await generatePptScenes(
+        `讲解：${knowledgePoints.join('、')}`,
+        aiConfig, true, true, knowledgePoints,
+        (msg) => write({ type: 'text_delta', text: `[PPT] ${msg}` }),
+      );
       if (pptScenes.length > 0) {
         write({ type: 'ppt_ready', scenes: pptScenes, nodeId, userId, knowledgePoints });
         const pptResource: Resource = {
