@@ -55,12 +55,16 @@ export default function MemoryPage() {
     },
   ];
 
-  // Fetch memories on mount
+  // Fetch real memory data from the server on mount.
   useEffect(() => {
-    // Using Zustand store as primary source until API is implemented.
-    // When the API is ready, replace with:
-    // const data = await apiGet<{ entries: MemoryEntry[] }>('/api/v1/memory');
-    setLoading(false);
+    let cancelled = false;
+    setLoading(true);
+    useMemoryStore.getState().syncFromServer().finally(() => {
+      if (!cancelled) setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Filter entries by active layer

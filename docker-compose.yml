@@ -99,6 +99,13 @@ services:
 
       # -- Storage --
       DT_DATA_DIR: /app/data
+
+      # -- 职能洞察（能力诊断/知识图谱数据源）--
+      # smartlearn 服务端代理需访问职能洞察后端，Dockerfile/.dockerignore 不带 .env，
+      # 必须在此显式注入，否则 /api/v1/career/health 会以 career_not_configured(503) 失败。
+      CAREER_INSIGHT_BASE_URL: ${CAREER_INSIGHT_BASE_URL:-http://121.43.156.61}
+      CAREER_INSIGHT_USERNAME: ${CAREER_INSIGHT_USERNAME:-}
+      CAREER_INSIGHT_PASSWORD: ${CAREER_INSIGHT_PASSWORD:-}
     volumes:
       - appdata:/app/data
     depends_on:

@@ -19,6 +19,7 @@ import {
   Brain,
   NotebookPen,
   GraduationCap,
+  Target,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/lib/store/auth-store';
@@ -40,6 +41,7 @@ const primaryNav = [
   { href: '/home', label: '首页', icon: Home },
   { href: '/smartlearn', label: '智能学习', icon: GraduationCap },
   { href: '/chat', label: 'AI 问答', icon: MessagesSquare },
+  { href: '/career', label: '职业洞察', icon: Target },
   { href: '/book', label: '智慧书', icon: BookMarked },
   { href: '/resources', label: '学习资源', icon: BookOpen },
 ] as const;

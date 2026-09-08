@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BookOpen, LayoutDashboard, Users, Settings, MessageSquare, GraduationCap, BookMarked, Brain } from 'lucide-react';
+import { BookOpen, LayoutDashboard, Users, Settings, MessageSquare, GraduationCap, BookMarked, Brain, Target } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/hooks/use-i18n';
 
@@ -10,6 +10,7 @@ const navItems = [
   { href: '/', labelKey: 'nav.dashboard', icon: LayoutDashboard },
   { href: '/chat', labelKey: 'nav.chat', icon: MessageSquare },
   { href: '/smartlearn', labelKey: 'nav.smartlearn', icon: GraduationCap },
+  { href: '/career', labelKey: 'nav.career', icon: Target },
   { href: '/knowledge', labelKey: 'nav.knowledge', icon: BookMarked },
   { href: '/memory', labelKey: 'nav.memory', icon: Brain },
   { href: '/profile', labelKey: 'nav.profile', icon: Users },

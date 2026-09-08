@@ -26,13 +26,40 @@ interface MemoryState {
   addEntry: (e: MemoryEntry) => void;
   removeEntry: (id: string) => void;
   consolidate: (surface?: string) => Promise<ConsolidateResult>;
-  syncFromServer: (surface?: string) => Promise<void>;
+  syncFromServer: () => Promise<void>;
   writeEntry: (entry: MemoryEntry) => Promise<void>;
 }
 
 /** Build a stable ID from layer + timestamp + random suffix. */
 function makeId(layer: string): string {
   return `${layer.toLowerCase()}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`;
+}
+
+/** All memory surfaces supported by the server memory API. */
+const MEMORY_SURFACES = ['chat', 'notebook', 'quiz', 'kb', 'book', 'cowriter'] as const;
+
+/** Shape of a trace event returned by GET /api/v1/memory?layer=trace */
+interface TraceEventShape {
+  id?: string;
+  ts?: string;
+  kind?: string;
+  payload?: Record<string, unknown>;
+  sessionId?: string;
+  turnId?: string;
+}
+
+/** Render a trace event into human-readable entry content. */
+function traceEventContent(event: TraceEventShape): string {
+  const payload = event.payload ?? {};
+  const text = payload.summary ?? payload.message ?? payload.text;
+  if (typeof text === 'string' && text.trim()) {
+    return text.trim().slice(0, 500);
+  }
+  const label = typeof payload.label === 'string' && payload.label ? `: ${payload.label}` : '';
+  const extra = Object.keys(payload).length > 0
+    ? ` ${JSON.stringify(payload).slice(0, 200)}`
+    : '';
+  return `[${event.kind ?? 'event'}]${label}${extra}`;
 }
 
 /**
@@ -96,7 +123,7 @@ export const useMemoryStore = create<MemoryState>()(
 
           // Refresh local entries from the server so the store stays in sync.
           if (result.consolidated) {
-            await get().syncFromServer(surface);
+            await get().syncFromServer();
           }
 
           return result;
@@ -110,21 +137,26 @@ export const useMemoryStore = create<MemoryState>()(
       },
 
       // ------------------------------------------------------------------
-      // syncFromServer — pull L3 (all slots) and L2 summary into local state
+      // syncFromServer — pull L1 (all surfaces) + L2 (all surfaces) + L3
+      // into the local store so the UI reflects the real server state.
       // ------------------------------------------------------------------
-      syncFromServer: async (surface = 'chat') => {
+      syncFromServer: async () => {
         try {
           const headers = buildAuthHeaders();
 
-          // Fetch all L3 synthesis slots and the L2 summary for the surface in parallel.
-          const [l3Res, l2Res] = await Promise.all([
+          // Fetch everything in parallel: L3 synthesis + per-surface L2/L1.
+          const responses = await Promise.all([
             fetch(`/api/v1/memory?layer=all_l3`, { headers }),
-            fetch(`/api/v1/memory?layer=l2&surface=${encodeURIComponent(surface)}`, { headers }),
+            ...MEMORY_SURFACES.flatMap((surface) => [
+              fetch(`/api/v1/memory?layer=l2&surface=${surface}`, { headers }),
+              fetch(`/api/v1/memory?layer=trace&surface=${surface}&limit=200`, { headers }),
+            ]),
           ]);
 
+          const l3Res = responses[0];
           const newEntries: MemoryEntry[] = [];
 
-          // --- L3 ---
+          // --- L3 (synthesis slots) ---
           if (l3Res.ok) {
             const l3Json = await l3Res.json();
             const l3Text: string = l3Json.data ?? '';
@@ -163,20 +195,44 @@ export const useMemoryStore = create<MemoryState>()(
             }
           }
 
-          // --- L2 ---
-          if (l2Res.ok) {
-            const l2Json = await l2Res.json();
-            const l2Text: string = l2Json.data ?? '';
+          // --- L2 + L1 for each surface ---
+          for (let i = 0; i < MEMORY_SURFACES.length; i++) {
+            const surface = MEMORY_SURFACES[i];
+            const l2Res = responses[1 + i * 2];
+            const l1Res = responses[2 + i * 2];
 
-            if (l2Text.trim()) {
-              newEntries.push({
-                id: makeId('L2'),
-                layer: 'L2',
-                content: l2Text.trim(),
-                tags: ['summary', surface],
-                timestamp: new Date().toISOString(),
-                source: surface,
-              });
+            // L2 summary for this surface
+            if (l2Res.ok) {
+              const l2Json = await l2Res.json();
+              const l2Text: string = l2Json.data ?? '';
+              if (l2Text.trim()) {
+                newEntries.push({
+                  id: makeId('L2'),
+                  layer: 'L2',
+                  content: l2Text.trim(),
+                  tags: ['summary', surface],
+                  timestamp: new Date().toISOString(),
+                  source: surface,
+                });
+              }
+            }
+
+            // L1 trace events for this surface
+            if (l1Res.ok) {
+              const l1Json = await l1Res.json();
+              const events = Array.isArray(l1Json.data) ? l1Json.data as TraceEventShape[] : [];
+              for (const event of events) {
+                const content = traceEventContent(event);
+                if (!content) continue;
+                newEntries.push({
+                  id: event.id ?? makeId('L1'),
+                  layer: 'L1',
+                  content,
+                  tags: ['trace', event.kind ?? 'event', surface],
+                  timestamp: event.ts ?? new Date().toISOString(),
+                  source: surface,
+                });
+              }
             }
           }
 
